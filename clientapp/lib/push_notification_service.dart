@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -22,6 +23,7 @@ class PushNotificationService {
       FlutterLocalNotificationsPlugin();
 
   StreamSubscription<QuerySnapshot>? _firestoreSub;
+  StreamSubscription<User?>? _authSub;
   DateTime? _startTime;
 
   /// Android notification channel.
@@ -37,13 +39,15 @@ class PushNotificationService {
     _startTime = DateTime.now();
 
     await _setupLocalNotifications();
-    _startListening();
+    _listenToAuthState();
 
     debugPrint('PushNotificationService initialized (Firestore listener)');
   }
 
   /// Stop listening (call on dispose if needed).
   void dispose() {
+    _authSub?.cancel();
+    _authSub = null;
     _firestoreSub?.cancel();
     _firestoreSub = null;
   }
@@ -65,6 +69,18 @@ class PushNotificationService {
               AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(_channel);
     }
+  }
+
+  /// Wait for the user to authenticate before listening to Firestore.
+  void _listenToAuthState() {
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        _startListening();
+      } else {
+        _firestoreSub?.cancel();
+        _firestoreSub = null;
+      }
+    });
   }
 
   /// Listen to the most recent notification doc and show a local notification

@@ -39,7 +39,8 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid &&
         request.resource.data.amount is number &&
         request.resource.data.amount > 0 &&
-        request.resource.data.keys().hasAny(['transactionId', 'senderNumber', 'status', 'paymentMethod']);
+        request.resource.data.status == 'Pending' &&
+        request.resource.data.keys().hasAll(['transactionId', 'senderNumber', 'paymentMethod']);
       allow update, delete: if isAdmin();
     }
 

@@ -50,6 +50,9 @@ class Donation {
     required this.paymentMethod,
     required this.createdAt,
     required this.userId,
+    required this.status,
+    required this.transactionId,
+    required this.senderNumber,
   });
 
   final String id;
@@ -58,6 +61,9 @@ class Donation {
   final String paymentMethod;
   final DateTime createdAt;
   final String userId;
+  final String status;
+  final String transactionId;
+  final String senderNumber;
 
   factory Donation.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final map = doc.data() ?? <String, dynamic>{};
@@ -68,6 +74,9 @@ class Donation {
       paymentMethod: (map['paymentMethod'] as String?) ?? 'Manual Transfer',
       createdAt: _readDate(map['createdAt']),
       userId: (map['userId'] as String?) ?? '',
+      status: (map['status'] as String?) ?? 'Approved',
+      transactionId: (map['transactionId'] as String?) ?? '',
+      senderNumber: (map['senderNumber'] as String?) ?? '',
     );
   }
 }

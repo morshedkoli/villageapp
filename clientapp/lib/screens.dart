@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
@@ -187,6 +188,26 @@ Drawer _buildSidebarMenu(BuildContext context) {
             onTap: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+            },
+          ),
+          FutureBuilder<bool>(
+            future: DataService.instance.isAdmin(),
+            builder: (context, snap) {
+              if (snap.data != true) return const SizedBox.shrink();
+              return Column(
+                children: [
+                  const Divider(height: 24),
+                  ListTile(
+                    leading: const Icon(Icons.admin_panel_settings_outlined, color: Color(0xFFFF9500)),
+                    title: Text(tr('Admin Panel', 'অ্যাডমিন প্যানেল'), style: const TextStyle(color: Color(0xFFFF9500), fontWeight: FontWeight.w600)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminPanelScreen()));
+                    },
+                  ),
+                ],
+              );
             },
           ),
         ],
@@ -556,10 +577,16 @@ class HomeScreen extends StatelessWidget {
               // ── Hero banner ──
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: pad.left),
-                child: _HeroCard(
-                  title: overview.name,
-                  balance: currency.format(overview.availableBalance),
-                  citizens: overview.totalCitizens,
+                child: StreamBuilder<int>(
+                  stream: data.citizenCount(),
+                  builder: (context, citizenSnap) {
+                    final citizenCount = citizenSnap.data ?? overview.totalCitizens;
+                    return _HeroCard(
+                      title: overview.name,
+                      balance: currency.format(overview.availableBalance),
+                      citizens: citizenCount,
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 20),
@@ -783,14 +810,26 @@ class DonateScreen extends StatefulWidget {
 }
 
 class _DonateScreenState extends State<DonateScreen> {
-  final _form = GlobalKey<FormState>();
+  final _txForm = GlobalKey<FormState>();
   final _amount = TextEditingController();
-  String _method = 'bKash';
+  final _transactionId = TextEditingController();
+  final _senderNumber = TextEditingController();
+  String? _method;
   bool _submitting = false;
+  bool _submitted = false;
+
+  static const _allMethods = [
+    {'key': 'bKash', 'bn': 'বিকাশ', 'color': 0xFFE2136E, 'icon': Icons.phone_android_rounded},
+    {'key': 'Nagad', 'bn': 'নগদ', 'color': 0xFFFF6A00, 'icon': Icons.phone_android_rounded},
+    {'key': 'Rocket', 'bn': 'রকেট', 'color': 0xFF8B2FA0, 'icon': Icons.phone_android_rounded},
+    {'key': 'Bank', 'bn': 'ব্যাংক অ্যাকাউন্ট', 'color': 0xFF1E40AF, 'icon': Icons.account_balance_rounded},
+  ];
 
   @override
   void dispose() {
     _amount.dispose();
+    _transactionId.dispose();
+    _senderNumber.dispose();
     super.dispose();
   }
 
@@ -803,106 +842,381 @@ class _DonateScreenState extends State<DonateScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
       ),
-      body: ListView(
-        padding: _pagePadding(context),
-        children: [
-          Center(
-            child: Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFFFF9500), Color(0xFFFF6B00)]),
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(color: const Color(0xFFFF9500).withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6)),
-                ],
+      body: _submitted ? _buildSuccess() : _buildDonationPage(),
+      bottomNavigationBar: _buildBottomTabBar(context, index: 0, onTap: (i) => _openRootTab(context, i)),
+    );
+  }
+
+  Widget _buildDonationPage() {
+    return StreamBuilder<Map<String, Map<String, String>>>(
+      stream: DataService.instance.paymentAccounts(),
+      builder: (context, snap) {
+        final accounts = snap.data ?? {};
+        // Only show methods that have an account number configured
+        final methods = _allMethods.where((m) {
+          final key = m['key'] as String;
+          final number = accounts[key]?['number'] ?? '';
+          return number.trim().isNotEmpty;
+        }).toList();
+
+        // Reset selected method if it was removed from available methods
+        if (_method != null && !methods.any((m) => m['key'] == _method)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _method = null);
+          });
+        }
+
+        return ListView(
+          padding: _pagePadding(context),
+          children: [
+            // Header
+            Center(
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFFFF9500), Color(0xFFFF6B00)]),
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(color: const Color(0xFFFF9500).withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6)),
+                  ],
+                ),
+                child: const Icon(Icons.volunteer_activism_rounded, color: Colors.white, size: 34),
               ),
-              child: const Icon(Icons.volunteer_activism_rounded, color: Colors.white, size: 34),
             ),
-          ),
-          const SizedBox(height: 12),
-          Center(
-            child: Text(
-              tr('Make a Donation', 'অনুদান দিন'),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF1C1C1E)),
+            const SizedBox(height: 12),
+            Center(
+              child: Text(
+                tr('Make a Donation', 'অনুদান দিন'),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF1C1C1E)),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Center(
-            child: Text(
-              tr('Support your village community fund', 'আপনার গ্রাম কমিউনিটি তহবিলে সহায়তা করুন'),
-              style: const TextStyle(fontSize: 13, color: Color(0xFF8E8E93)),
+            const SizedBox(height: 4),
+            Center(
+              child: Text(
+                tr('Select a payment method to donate', 'অনুদান দিতে একটি পেমেন্ট পদ্ধতি নির্বাচন করুন'),
+                style: const TextStyle(fontSize: 13, color: Color(0xFF8E8E93)),
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          AppCard(
-            child: Form(
-              key: _form,
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: _amount,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: tr('Donation Amount', 'অনুদানের পরিমাণ'),
-                      prefixIcon: const Icon(Icons.currency_exchange_rounded, color: Color(0xFFFF9500)),
+            const SizedBox(height: 20),
+
+            if (methods.isEmpty && snap.hasData)
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFFECACA)),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.account_balance_wallet_outlined, color: Color(0xFFDC2626), size: 32),
+                    const SizedBox(height: 8),
+                    Text(
+                      tr('No payment methods available', 'কোনো পেমেন্ট পদ্ধতি উপলব্ধ নেই'),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFFDC2626)),
                     ),
-                    validator: (v) {
-                      final n = double.tryParse((v ?? '').trim());
-                      if (n == null || n <= 0) return tr('Enter a valid donation amount', 'সঠিক অনুদানের পরিমাণ লিখুন');
-                      return null;
-                    },
+                    const SizedBox(height: 4),
+                    Text(
+                      tr('Please contact the admin to set up payment accounts.', 'পেমেন্ট অ্যাকাউন্ট সেট আপ করতে অ্যাডমিনের সাথে যোগাযোগ করুন।'),
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+
+            // Payment method selection
+            ...List.generate(methods.length, (i) {
+              final m = methods[i];
+              final key = m['key'] as String;
+              final bn = m['bn'] as String;
+              final color = Color(m['color'] as int);
+              final icon = m['icon'] as IconData;
+              final selected = _method == key;
+              final account = accounts[key];
+              final number = account?['number'] ?? '';
+              final name = account?['name'] ?? '';
+              final isBank = key == 'Bank';
+              final bankName = account?['bankName'] ?? '';
+              final branch = account?['branch'] ?? '';
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: GestureDetector(
+                  onTap: () => setState(() => _method = selected ? null : key),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      color: selected ? color.withValues(alpha: 0.05) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: selected ? color : const Color(0xFFE5E7EB),
+                        width: selected ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Icon(icon, color: color, size: 24),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Text(
+                                  tr(key == 'Bank' ? 'Bank Account' : key, bn),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: selected ? color : const Color(0xFF1C1C1E),
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                                color: selected ? color : const Color(0xFFC7C7CC),
+                                size: 24,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Show account details when selected
+                        if (selected)
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.06),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  isBank ? tr('Bank Transfer Details', 'ব্যাংক ট্রান্সফারের তথ্য') : tr('Send Money To', 'টাকা পাঠান'),
+                                  style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+                                ),
+                                if (isBank && bankName.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    bankName,
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color),
+                                  ),
+                                  if (branch.isNotEmpty)
+                                    Text(
+                                      branch,
+                                      style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+                                    ),
+                                ],
+                                const SizedBox(height: 6),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      number,
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w800,
+                                        color: color,
+                                        letterSpacing: 1.5,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: () {
+                                        Clipboard.setData(ClipboardData(text: number));
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(tr('Number copied', 'নম্বর কপি হয়েছে'))),
+                                        );
+                                      },
+                                      child: Icon(Icons.copy_rounded, size: 18, color: color.withValues(alpha: 0.6)),
+                                    ),
+                                  ],
+                                ),
+                                if (name.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    name,
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1C1C1E)),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: _method,
-                    items: [
-                      DropdownMenuItem(value: 'bKash', child: Text(tr('bKash', 'বিকাশ'))),
-                      DropdownMenuItem(value: 'Nagad', child: Text(tr('Nagad', 'নগদ'))),
-                      DropdownMenuItem(value: 'Rocket', child: Text(tr('Rocket', 'রকেট'))),
-                      DropdownMenuItem(value: 'Manual Transfer', child: Text(tr('Manual Transfer', 'ম্যানুয়াল ট্রান্সফার'))),
+                ),
+              );
+            }),
+
+            // Donation form — visible when a method is selected
+            if (_method != null) ...[
+              const SizedBox(height: 8),
+              AppCard(
+                child: Form(
+                  key: _txForm,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _method == 'Bank'
+                            ? tr('After transferring, fill this form', 'ট্রান্সফারের পর এই ফর্ম পূরণ করুন')
+                            : tr('After sending money, fill this form', 'টাকা পাঠানোর পর এই ফর্ম পূরণ করুন'),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1C1C1E)),
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _amount,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: tr('Donation Amount', 'অনুদানের পরিমাণ'),
+                          prefixIcon: const Icon(Icons.currency_exchange_rounded, color: Color(0xFFFF9500)),
+                        ),
+                        validator: (v) {
+                          final n = double.tryParse((v ?? '').trim());
+                          if (n == null || n <= 0) return tr('Enter a valid donation amount', 'সঠিক অনুদানের পরিমাণ লিখুন');
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _transactionId,
+                        decoration: InputDecoration(
+                          labelText: _method == 'Bank'
+                              ? tr('Transaction/Reference ID', 'ট্রানজেকশন/রেফারেন্স আইডি')
+                              : tr('Transaction ID', 'ট্রানজেকশন আইডি'),
+                          prefixIcon: const Icon(Icons.receipt_long_rounded, color: Color(0xFFFF9500)),
+                        ),
+                        validator: (v) {
+                          if ((v ?? '').trim().isEmpty) return tr('Enter your transaction ID', 'আপনার ট্রানজেকশন আইডি লিখুন');
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _senderNumber,
+                        keyboardType: _method == 'Bank' ? TextInputType.text : TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: _method == 'Bank'
+                              ? tr('Sender Account/Phone', 'প্রেরকের অ্যাকাউন্ট/ফোন')
+                              : tr('Sender Phone Number', 'প্রেরকের ফোন নম্বর'),
+                          prefixIcon: Icon(
+                            _method == 'Bank' ? Icons.account_circle_outlined : Icons.phone_rounded,
+                            color: const Color(0xFF8E8E93),
+                          ),
+                        ),
+                        validator: (v) {
+                          if ((v ?? '').trim().isEmpty) {
+                            return _method == 'Bank'
+                                ? tr('Enter sender account or phone', 'প্রেরকের অ্যাকাউন্ট বা ফোন নম্বর লিখুন')
+                                : tr('Enter a valid phone number', 'সঠিক ফোন নম্বর লিখুন');
+                          }
+                          if (_method != 'Bank' && (v ?? '').trim().length < 11) {
+                            return tr('Enter a valid phone number', 'সঠিক ফোন নম্বর লিখুন');
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: FilledButton(
+                          onPressed: _submitting ? null : _submit,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF9500),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: Text(
+                            _submitting ? tr('Submitting...', 'জমা হচ্ছে...') : tr('Submit Donation', 'অনুদান জমা দিন'),
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                          ),
+                        ),
+                      ),
                     ],
-                    onChanged: (v) => setState(() => _method = v ?? 'bKash'),
-                    decoration: InputDecoration(
-                      labelText: tr('Payment Method', 'পেমেন্ট পদ্ধতি'),
-                      prefixIcon: const Icon(Icons.payment_rounded, color: Color(0xFF8E8E93)),
-                    ),
                   ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: FilledButton(
-                      onPressed: _submitting ? null : _submit,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF9500),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: Text(
-                        _submitting ? tr('Processing...', 'প্রসেস করা হচ্ছে...') : tr('Confirm Donation', 'অনুদান নিশ্চিত করুন'),
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSuccess() {
+    return Padding(
+      padding: _pagePadding(context),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF34D399)]),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 34),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            tr('Pending Verification', 'যাচাইয়ের অপেক্ষায়'),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF1C1C1E)),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            tr(
+              'Your donation has been submitted successfully. The admin will verify your payment and approve it shortly.',
+              'আপনার অনুদান সফলভাবে জমা হয়েছে। অ্যাডমিন আপনার পেমেন্ট যাচাই করে শীঘ্রই অনুমোদন করবেন।',
+            ),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFFF9500),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Text(
+                tr('Done', 'সম্পন্ন'),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
               ),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomTabBar(context, index: 0, onTap: (i) => _openRootTab(context, i)),
     );
   }
 
   Future<void> _submit() async {
-    if (!(_form.currentState?.validate() ?? false)) return;
+    if (!(_txForm.currentState?.validate() ?? false)) return;
     setState(() => _submitting = true);
     try {
       final amount = double.parse(_amount.text.trim());
-      await DataService.instance.addDonation(amount: amount, paymentMethod: _method);
+      await DataService.instance.addDonation(
+        amount: amount,
+        paymentMethod: _method!,
+        transactionId: _transactionId.text.trim(),
+        senderNumber: _senderNumber.text.trim(),
+      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Donation added', 'অনুদান যুক্ত হয়েছে')}: ${currency.format(amount)}')));
-      Navigator.of(context).pop();
+      setState(() => _submitted = true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${tr('Error', 'ত্রুটি')}: $e')));
@@ -1207,6 +1521,19 @@ class ProblemViewCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (item.photoUrl.isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  item.photoUrl,
+                  width: double.infinity,
+                  height: compact ? 120 : 180,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             Row(
               children: [
                 Expanded(child: Text(item.title, style: Theme.of(context).textTheme.titleMedium)),
@@ -1323,18 +1650,50 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                     validator: (v) => (v == null || v.trim().isEmpty) ? tr('Required', 'প্রয়োজনীয়') : null,
                   ),
                   const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _pickPhoto,
-                      icon: const Icon(Icons.add_a_photo_outlined),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  if (_photo != null) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Stack(
+                        children: [
+                          Image.file(
+                            _photo!,
+                            width: double.infinity,
+                            height: 200,
+                            fit: BoxFit.cover,
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Row(
+                              children: [
+                                _photoActionButton(
+                                  icon: Icons.edit_outlined,
+                                  onTap: _pickPhoto,
+                                ),
+                                const SizedBox(width: 8),
+                                _photoActionButton(
+                                  icon: Icons.close_rounded,
+                                  onTap: () => setState(() => _photo = null),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      label: Text(_photo == null ? tr('Upload Photo', 'ছবি আপলোড করুন') : tr('Photo selected', 'ছবি নির্বাচন করা হয়েছে')),
                     ),
-                  ),
+                  ] else
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _pickPhoto,
+                        icon: const Icon(Icons.add_a_photo_outlined),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        label: Text(tr('Upload Photo', 'ছবি আপলোড করুন')),
+                      ),
+                    ),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
@@ -1365,6 +1724,17 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     final img = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 75);
     if (img == null) return;
     setState(() => _photo = File(img.path));
+  }
+
+  Widget _photoActionButton({required IconData icon, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: Colors.white, size: 18),
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -2812,6 +3182,623 @@ class _HeaderActionButton extends StatelessWidget {
         child: Icon(icon, color: const Color(0xFF1C1C1E), size: 20),
       ),
     );
+  }
+}
+
+class AdminPanelScreen extends StatefulWidget {
+  const AdminPanelScreen({super.key});
+
+  @override
+  State<AdminPanelScreen> createState() => _AdminPanelScreenState();
+}
+
+class _AdminPanelScreenState extends State<AdminPanelScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabCtrl = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text(tr('Admin Panel', 'অ্যাডমিন প্যানেল')),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        bottom: TabBar(
+          controller: _tabCtrl,
+          labelColor: const Color(0xFFFF9500),
+          unselectedLabelColor: const Color(0xFF8E8E93),
+          indicatorColor: const Color(0xFFFF9500),
+          tabs: [
+            Tab(text: tr('Pending Donations', 'মুলতুবি অনুদান')),
+            Tab(text: tr('Payment Settings', 'পেমেন্ট সেটিংস')),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabCtrl,
+        children: const [
+          _AdminPendingDonationsTab(),
+          _AdminPaymentSettingsTab(),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminPendingDonationsTab extends StatelessWidget {
+  const _AdminPendingDonationsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Donation>>(
+      stream: DataService.instance.pendingDonations(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: Color(0xFFFF9500)));
+        }
+        final donations = snap.data ?? [];
+        if (donations.isEmpty) {
+          return Center(
+            child: EmptyStateCard(
+              icon: Icons.check_circle_outline_rounded,
+              title: tr('No Pending Donations', 'কোনো মুলতুবি অনুদান নেই'),
+              message: tr('All donations have been reviewed', 'সমস্ত অনুদান পর্যালোচনা করা হয়েছে'),
+            ),
+          );
+        }
+        return ListView.separated(
+          padding: _pagePadding(context),
+          itemCount: donations.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, i) => _AdminDonationCard(donation: donations[i]),
+        );
+      },
+    );
+  }
+}
+
+class _AdminDonationCard extends StatefulWidget {
+  const _AdminDonationCard({required this.donation});
+  final Donation donation;
+
+  @override
+  State<_AdminDonationCard> createState() => _AdminDonationCardState();
+}
+
+class _AdminDonationCardState extends State<_AdminDonationCard> {
+  bool _processing = false;
+
+  Future<void> _approve() async {
+    setState(() => _processing = true);
+    try {
+      await DataService.instance.approveDonation(widget.donation.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('Donation approved', 'অনুদান অনুমোদিত হয়েছে'))),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${tr('Error', 'ত্রুটি')}: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
+  }
+
+  Future<void> _reject() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('Reject Donation?', 'অনুদান প্রত্যাখ্যান করবেন?')),
+        content: Text(tr('This action cannot be undone.', 'এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(tr('Cancel', 'বাতিল')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(tr('Reject', 'প্রত্যাখ্যান'), style: const TextStyle(color: Color(0xFFDC2626))),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _processing = true);
+    try {
+      await DataService.instance.rejectDonation(widget.donation.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr('Donation rejected', 'অনুদান প্রত্যাখ্যাত হয়েছে'))),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${tr('Error', 'ত্রুটি')}: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = widget.donation;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8F0),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.volunteer_activism, color: Color(0xFFFF9500), size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(d.donorName, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1C1C1E))),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${d.paymentMethod} · ${shortDate.format(d.createdAt)}',
+                      style: const TextStyle(color: Color(0xFF8E8E93), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                currency.format(d.amount),
+                style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFFF9500), fontSize: 15),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _infoRow(tr('Transaction ID', 'ট্রানজেকশন আইডি'), d.transactionId),
+                const SizedBox(height: 6),
+                _infoRow(tr('Sender Number', 'প্রেরকের নম্বর'), d.senderNumber),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: OutlinedButton(
+                    onPressed: _processing ? null : _reject,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFDC2626),
+                      side: const BorderSide(color: Color(0xFFDC2626)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(tr('Reject', 'প্রত্যাখ্যান'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: FilledButton(
+                    onPressed: _processing ? null : _approve,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF059669),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(
+                      _processing ? tr('Processing...', 'প্রসেস হচ্ছে...') : tr('Approve', 'অনুমোদন'),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Row(
+      children: [
+        Text('$label: ', style: const TextStyle(fontSize: 13, color: Color(0xFF8E8E93))),
+        Expanded(
+          child: Text(
+            value.isEmpty ? '-' : value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1C1C1E)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AdminPaymentSettingsTab extends StatefulWidget {
+  const _AdminPaymentSettingsTab();
+
+  @override
+  State<_AdminPaymentSettingsTab> createState() => _AdminPaymentSettingsTabState();
+}
+
+class _AdminPaymentSettingsTabState extends State<_AdminPaymentSettingsTab> {
+  final _bkashNum = TextEditingController();
+  final _bkashName = TextEditingController();
+  final _nagadNum = TextEditingController();
+  final _nagadName = TextEditingController();
+  final _rocketNum = TextEditingController();
+  final _rocketName = TextEditingController();
+  final _bankNum = TextEditingController();
+  final _bankName = TextEditingController();
+  final _bankBankName = TextEditingController();
+  final _bankBranch = TextEditingController();
+  bool _loaded = false;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _bkashNum.dispose();
+    _bkashName.dispose();
+    _nagadNum.dispose();
+    _nagadName.dispose();
+    _rocketNum.dispose();
+    _rocketName.dispose();
+    _bankNum.dispose();
+    _bankName.dispose();
+    _bankBankName.dispose();
+    _bankBranch.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<Map<String, Map<String, String>>>(
+      stream: DataService.instance.paymentAccounts(),
+      builder: (context, snap) {
+        if (!_loaded && snap.hasData) {
+          final accounts = snap.data!;
+          _bkashNum.text = accounts['bKash']?['number'] ?? '';
+          _bkashName.text = accounts['bKash']?['name'] ?? '';
+          _nagadNum.text = accounts['Nagad']?['number'] ?? '';
+          _nagadName.text = accounts['Nagad']?['name'] ?? '';
+          _rocketNum.text = accounts['Rocket']?['number'] ?? '';
+          _rocketName.text = accounts['Rocket']?['name'] ?? '';
+          _bankNum.text = accounts['Bank']?['number'] ?? '';
+          _bankName.text = accounts['Bank']?['name'] ?? '';
+          _bankBankName.text = accounts['Bank']?['bankName'] ?? '';
+          _bankBranch.text = accounts['Bank']?['branch'] ?? '';
+          _loaded = true;
+        }
+        return ListView(
+          padding: _pagePadding(context),
+          children: [
+            // Header info
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8F0),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFFFE0B2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded, color: Color(0xFFFF9500), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      tr('Citizens will see these account details when donating', 'নাগরিকরা অনুদান দেওয়ার সময় এই অ্যাকাউন্টের তথ্য দেখবেন'),
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF8E8E93)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // bKash card
+            _buildAccountCard(
+              title: tr('bKash', 'বিকাশ'),
+              color: const Color(0xFFE2136E),
+              numCtrl: _bkashNum,
+              nameCtrl: _bkashName,
+            ),
+            const SizedBox(height: 14),
+
+            // Nagad card
+            _buildAccountCard(
+              title: tr('Nagad', 'নগদ'),
+              color: const Color(0xFFFF6A00),
+              numCtrl: _nagadNum,
+              nameCtrl: _nagadName,
+            ),
+            const SizedBox(height: 14),
+
+            // Rocket card
+            _buildAccountCard(
+              title: tr('Rocket', 'রকেট'),
+              color: const Color(0xFF8B2FA0),
+              numCtrl: _rocketNum,
+              nameCtrl: _rocketName,
+            ),
+            const SizedBox(height: 14),
+
+            // Bank card
+            _buildBankAccountCard(),
+            const SizedBox(height: 24),
+
+            // Save button
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: _saving ? null : _save,
+                icon: _saving ? const SizedBox.shrink() : const Icon(Icons.save_rounded, size: 20),
+                label: Text(
+                  _saving ? tr('Saving...', 'সংরক্ষণ হচ্ছে...') : tr('Save All Settings', 'সকল সেটিংস সংরক্ষণ করুন'),
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF9500),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildAccountCard({
+    required String title,
+    required Color color,
+    required TextEditingController numCtrl,
+    required TextEditingController nameCtrl,
+  }) {
+    final hasData = numCtrl.text.trim().isNotEmpty;
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        children: [
+          // Header strip
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.06),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(15),
+                topRight: Radius.circular(15),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.phone_android_rounded, color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: hasData ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    hasData ? tr('Active', 'সক্রিয়') : tr('Not Set', 'সেট নেই'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: hasData ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Fields
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                TextField(
+                  controller: numCtrl,
+                  keyboardType: TextInputType.phone,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: tr('Account Number', 'অ্যাকাউন্ট নম্বর'),
+                    hintText: tr('e.g. 01XXXXXXXXX', 'যেমন ০১XXXXXXXXX'),
+                    prefixIcon: Icon(Icons.dialpad_rounded, color: color, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: color, width: 1.5)),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    labelText: tr('Account Holder Name', 'অ্যাকাউন্ট ধারকের নাম'),
+                    hintText: tr('e.g. Mohammad Ali', 'যেমন মোহাম্মদ আলী'),
+                    prefixIcon: Icon(Icons.person_outline_rounded, color: color, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: color, width: 1.5)),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBankAccountCard() {
+    const color = Color(0xFF1E40AF);
+    final hasData = _bankNum.text.trim().isNotEmpty;
+    InputDecoration _inputDeco(String label, String labelBn, String hint, String hintBn, IconData icon) {
+      return InputDecoration(
+        labelText: tr(label, labelBn),
+        hintText: tr(hint, hintBn),
+        prefixIcon: Icon(icon, color: color, size: 20),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: color, width: 1.5)),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      );
+    }
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.06),
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(15), topRight: Radius.circular(15)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.account_balance_rounded, color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Text(tr('Bank Account', 'ব্যাংক অ্যাকাউন্ট'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: hasData ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    hasData ? tr('Active', 'সক্রিয়') : tr('Not Set', 'সেট নেই'),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: hasData ? const Color(0xFF059669) : const Color(0xFFDC2626)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _bankBankName,
+                  onChanged: (_) => setState(() {}),
+                  decoration: _inputDeco('Bank Name', 'ব্যাংকের নাম', 'e.g. Sonali Bank', 'যেমন সোনালী ব্যাংক', Icons.account_balance_rounded),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _bankBranch,
+                  onChanged: (_) => setState(() {}),
+                  decoration: _inputDeco('Branch Name', 'শাখার নাম', 'e.g. Main Branch', 'যেমন প্রধান শাখা', Icons.location_on_outlined),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _bankNum,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
+                  decoration: _inputDeco('Account Number', 'অ্যাকাউন্ট নম্বর', 'e.g. 1234567890', 'যেমন ১২৩৪৫৬৭৮৯০', Icons.dialpad_rounded),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _bankName,
+                  decoration: _inputDeco('Account Holder Name', 'অ্যাকাউন্ট ধারকের নাম', 'e.g. Mohammad Ali', 'যেমন মোহাম্মদ আলী', Icons.person_outline_rounded),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await DataService.instance.updatePaymentAccounts({
+        'bKash': {'number': _bkashNum.text.trim(), 'name': _bkashName.text.trim()},
+        'Nagad': {'number': _nagadNum.text.trim(), 'name': _nagadName.text.trim()},
+        'Rocket': {'number': _rocketNum.text.trim(), 'name': _rocketName.text.trim()},
+        'Bank': {'number': _bankNum.text.trim(), 'name': _bankName.text.trim(), 'bankName': _bankBankName.text.trim(), 'branch': _bankBranch.text.trim()},
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(tr('Settings saved successfully', 'সেটিংস সফলভাবে সংরক্ষিত হয়েছে')),
+          backgroundColor: const Color(0xFF059669),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${tr('Error', 'ত্রুটি')}: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }
 

@@ -1,10 +1,8 @@
 import 'dart:io';
 import 'dart:convert';
-import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'models.dart';
@@ -18,13 +16,32 @@ class DataService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   User? get currentUser => _auth.currentUser;
   Stream<User?> authState() => _auth.authStateChanges();
 
   Future<void> signOut() => _auth.signOut();
+
+  Future<void> sendLoginLink(String email) async {
+    await _auth.sendSignInLinkToEmail(
+      email: email,
+      actionCodeSettings: ActionCodeSettings(
+        url: 'https://doulatpara.page.link/login',
+        handleCodeInApp: true,
+        androidPackageName: 'com.example.doulatpara',
+        iOSBundleId: 'com.example.doulatpara',
+      ),
+    );
+  }
+
+  Future<void> signInWithEmailLink({
+    required String email,
+    required String emailLink,
+  }) async {
+    await _auth.signInWithEmailLink(email: email, emailLink: emailLink);
+    await _upsertUserProfile();
+  }
 
   /// Returns `true` if this is a brand-new user (profile setup needed).
   Future<bool> signInWithGoogle() async {
@@ -57,10 +74,56 @@ class DataService {
   Stream<List<Donation>> donations({int limit = 100}) {
     return _firestore
         .collection('donations')
+        .where('status', isEqualTo: 'Approved')
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
         .map((snap) => snap.docs.map(Donation.fromDoc).toList());
+  }
+
+  Stream<List<Donation>> pendingDonations() {
+    return _firestore
+        .collection('donations')
+        .where('status', isEqualTo: 'Pending')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map(Donation.fromDoc).toList());
+  }
+
+  Stream<Map<String, Map<String, String>>> paymentAccounts() {
+    return _firestore
+        .collection('villages')
+        .doc(villageDocId)
+        .snapshots()
+        .map((doc) {
+      final data = doc.data() ?? {};
+      final accounts = data['paymentAccounts'] as Map<String, dynamic>? ?? {};
+      return accounts.map((k, v) {
+        if (v is Map) {
+          final m = <String, String>{
+            'number': (v['number'] ?? '').toString(),
+            'name': (v['name'] ?? '').toString(),
+          };
+          if (v['bankName'] != null) m['bankName'] = v['bankName'].toString();
+          if (v['branch'] != null) m['branch'] = v['branch'].toString();
+          return MapEntry(k, m);
+        }
+        return MapEntry(k, {'number': v.toString(), 'name': ''});
+      });
+    });
+  }
+
+  Future<void> updatePaymentAccounts(Map<String, Map<String, String>> accounts) async {
+    await _firestore.collection('villages').doc(villageDocId).set({
+      'paymentAccounts': accounts,
+    }, SetOptions(merge: true));
+  }
+
+  Future<bool> isAdmin() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    final tokenResult = await user.getIdTokenResult();
+    return tokenResult.claims?['admin'] == true;
   }
 
   Stream<List<ProblemReport>> problems({int limit = 100}) {
@@ -88,6 +151,15 @@ class DataService {
         .orderBy('name')
         .snapshots()
         .map((snap) => snap.docs.map(Citizen.fromDoc).toList());
+  }
+
+  /// Returns a real-time count of registered citizens from the users collection.
+  Stream<int> citizenCount() {
+    return _firestore
+        .collection('users')
+        .where('isCitizen', isEqualTo: true)
+        .snapshots()
+        .map((snap) => snap.size);
   }
 
   Stream<List<AppNotification>> notifications({int limit = 100}) {
@@ -158,6 +230,8 @@ class DataService {
   Future<void> addDonation({
     required double amount,
     required String paymentMethod,
+    required String transactionId,
+    required String senderNumber,
   }) async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -168,18 +242,35 @@ class DataService {
     final donorName =
         profile.data()?['name'] as String? ?? user.email ?? 'Citizen';
 
+    await _firestore.collection('donations').add({
+      'userId': user.uid,
+      'donorName': donorName,
+      'amount': amount,
+      'paymentMethod': paymentMethod,
+      'transactionId': transactionId,
+      'senderNumber': senderNumber,
+      'status': 'Pending',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> approveDonation(String donationId) async {
+    final donationDoc =
+        await _firestore.collection('donations').doc(donationId).get();
+    final data = donationDoc.data();
+    if (data == null) throw StateError('Donation not found.');
+
+    final amount = (data['amount'] as num?)?.toDouble() ?? 0;
+    final donorName = data['donorName'] as String? ?? 'Anonymous';
+
     await _firestore.runTransaction((tx) async {
       final villageRef = _firestore.collection('villages').doc(villageDocId);
       tx.set(villageRef, {
         'totalFundCollected': FieldValue.increment(amount),
       }, SetOptions(merge: true));
 
-      tx.set(_firestore.collection('donations').doc(), {
-        'userId': user.uid,
-        'donorName': donorName,
-        'amount': amount,
-        'paymentMethod': paymentMethod,
-        'createdAt': FieldValue.serverTimestamp(),
+      tx.update(_firestore.collection('donations').doc(donationId), {
+        'status': 'Approved',
       });
 
       tx.set(_firestore.collection('fund_transactions').doc(), {
@@ -189,13 +280,18 @@ class DataService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Write an in-app notification for all users.
       tx.set(_firestore.collection('notifications').doc(), {
         'title': 'নতুন অনুদান',
         'body': '$donorName ৳$amount অনুদান দিয়েছেন',
         'type': 'donation',
         'createdAt': FieldValue.serverTimestamp(),
       });
+    });
+  }
+
+  Future<void> rejectDonation(String donationId) async {
+    await _firestore.collection('donations').doc(donationId).update({
+      'status': 'Rejected',
     });
   }
 
@@ -220,10 +316,12 @@ class DataService {
       final bytes = await photo.readAsBytes();
       final base64Image = base64Encode(bytes);
       const imgbbApiKey = '707ad238025806ece51d9e63679151f7';
-      final response = await HttpClient().postUrl(Uri.parse('https://api.imgbb.com/1/upload?key=$imgbbApiKey'))
-        ..headers.contentType = ContentType('application', 'x-www-form-urlencoded')
-        ..write('image=$base64Image');
-      final res = await response.close();
+      final request = await HttpClient().postUrl(
+        Uri.parse('https://api.imgbb.com/1/upload?key=$imgbbApiKey'),
+      );
+      request.headers.contentType = ContentType('application', 'x-www-form-urlencoded');
+      request.write('image=${Uri.encodeComponent(base64Image)}');
+      final res = await request.close();
       final resBody = await res.transform(utf8.decoder).join();
       final json = jsonDecode(resBody);
       if (json['success'] == true) {
@@ -303,6 +401,12 @@ class DataService {
     if (isNew) {
       final displayName =
           user.displayName ?? user.email?.split('@').first ?? 'Citizen';
+
+      // Increment totalCitizens counter on the village document.
+      await _firestore.collection('villages').doc(villageDocId).set({
+        'totalCitizens': FieldValue.increment(1),
+      }, SetOptions(merge: true));
+
       await _firestore.collection('notifications').add({
         'title': 'নতুন নাগরিক যোগ হয়েছে',
         'body': '$displayName গ্রামে যোগদান করেছেন',
