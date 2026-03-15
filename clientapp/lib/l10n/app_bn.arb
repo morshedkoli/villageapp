@@ -1,0 +1,5 @@
+{
+  "@@locale": "bn",
+  "villageHubStyleThemeOf": "লগইনে এগিয়ে যান",
+  "villageDevelopmentPlatform": "গ্রাম উন্নয়ন প্ল্যাটফর্ম'),\n      locale: Locale(settings.languageCode),\n      supportedLocales: const [Locale('en'), Locale('bn"
+}

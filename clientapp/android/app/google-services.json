@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "672769898353",
+    "project_id": "village-1727b",
+    "storage_bucket": "village-1727b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:672769898353:android:9ad26ddb779dac375b28d0",
+        "android_client_info": {
+          "package_name": "com.example.doulatpara"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "672769898353-ed67804mprcm5h6pmf18capu4qvbad4e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.doulatpara",
+            "certificate_hash": "d10540a9db30888c05b39e9d7c04374dcdac59ad"
+          }
+        },
+        {
+          "client_id": "672769898353-v2e8tn8k6vfkcd0pk9sffbs6r8elb95e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCj3zqf8gRBkqeLCgqxQMDvDqVRDtPL0O0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "672769898353-v2e8tn8k6vfkcd0pk9sffbs6r8elb95e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

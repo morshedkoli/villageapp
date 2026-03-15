@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /villages/{villageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId}/notification_reads/{notificationId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) &&
+        request.resource.data.keys().hasOnly(['readAt']) &&
+        request.resource.data.readAt is timestamp;
+      allow delete: if isOwner(userId);
+    }
+
+    match /donations/{donationId} {
+      allow read: if true;
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.amount is number &&
+        request.resource.data.amount > 0 &&
+        request.resource.data.keys().hasAny(['transactionId', 'senderNumber', 'status', 'paymentMethod']);
+      allow update, delete: if isAdmin();
+    }
+
+    match /fund_transactions/{transactionId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /problems/{problemId} {
+      allow read: if true;
+      allow create: if isSignedIn() &&
+        request.resource.data.reportedBy == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+  }
+}
