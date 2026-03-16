@@ -3010,8 +3010,18 @@ class _NotificationScreenState extends State<NotificationScreen> {
                               ),
                               child: Icon(_iconFor(n.type), color: n.type == 'donation' ? const Color(0xFFFF9500) : n.type == 'problem' ? const Color(0xFFFF3B30) : const Color(0xFF007AFF), size: 20),
                             ),
-                            title: Text(n.message),
-                            subtitle: Text(DateFormat('dd MMM, hh:mm a').format(n.createdAt)),
+                            title: Text(n.title.isNotEmpty ? n.title : n.body.isNotEmpty ? n.body : 'Village update available'),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (n.title.isNotEmpty && n.body.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: Text(n.body, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  ),
+                                Text(DateFormat('dd MMM, hh:mm a').format(n.createdAt)),
+                              ],
+                            ),
                             trailing: IconButton(
                               onPressed: () async {
                                 final ok = await _ensureLogin(context);

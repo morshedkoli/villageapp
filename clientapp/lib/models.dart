@@ -193,21 +193,32 @@ class AppNotification {
   const AppNotification({
     required this.id,
     required this.type,
-    required this.message,
+    required this.title,
+    required this.body,
     required this.createdAt,
   });
 
   final String id;
   final String type;
-  final String message;
+  final String title;
+  final String body;
   final DateTime createdAt;
+
+  /// Combined display text: shows title + body when both exist.
+  String get message {
+    if (title.isNotEmpty && body.isNotEmpty) return '$title\n$body';
+    if (title.isNotEmpty) return title;
+    if (body.isNotEmpty) return body;
+    return 'Village update available';
+  }
 
   factory AppNotification.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final map = doc.data() ?? <String, dynamic>{};
     return AppNotification(
       id: doc.id,
       type: (map['type'] as String?) ?? 'project',
-      message: (map['message'] as String?) ?? 'Village update available',
+      title: (map['title'] as String?) ?? '',
+      body: (map['body'] as String?) ?? '',
       createdAt: _readDate(map['createdAt']),
     );
   }
