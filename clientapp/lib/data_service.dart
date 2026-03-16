@@ -3,9 +3,13 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'connectivity_service.dart';
 import 'models.dart';
+import 'onesignal_api_service.dart';
 
 class DataService {
   DataService._();
@@ -238,6 +242,18 @@ class DataService {
       throw StateError('Login required to donate.');
     }
 
+    // Queue for later if offline.
+    if (!ConnectivityService.instance.isOnline) {
+      await _queueOfflineWrite({
+        'type': 'donation',
+        'amount': amount,
+        'paymentMethod': paymentMethod,
+        'transactionId': transactionId,
+        'senderNumber': senderNumber,
+      });
+      return;
+    }
+
     final profile = await _firestore.collection('users').doc(user.uid).get();
     final donorName =
         profile.data()?['name'] as String? ?? user.email ?? 'Citizen';
@@ -287,6 +303,13 @@ class DataService {
         'createdAt': FieldValue.serverTimestamp(),
       });
     });
+
+    // Send OneSignal push (no server required).
+    await OneSignalApiService.sendToAll(
+      title: 'নতুন অনুদান',
+      body: '$donorName ৳$amount অনুদান দিয়েছেন',
+      type: 'donation',
+    );
   }
 
   Future<void> rejectDonation(String donationId) async {
@@ -304,6 +327,17 @@ class DataService {
     final user = _auth.currentUser;
     if (user == null) {
       throw StateError('Login required to report problems.');
+    }
+
+    // Queue for later if offline (photo will be lost).
+    if (!ConnectivityService.instance.isOnline) {
+      await _queueOfflineWrite({
+        'type': 'problem',
+        'title': title,
+        'description': description,
+        'location': location,
+      });
+      return;
     }
 
     final profile = await _firestore.collection('users').doc(user.uid).get();
@@ -349,6 +383,13 @@ class DataService {
       'type': 'problem',
       'createdAt': FieldValue.serverTimestamp(),
     });
+
+    // Send OneSignal push (no server required).
+    await OneSignalApiService.sendToAll(
+      title: 'নতুন সমস্যা রিপোর্ট',
+      body: '$reporterName "$title" সমস্যা রিপোর্ট করেছেন',
+      type: 'problem',
+    );
   }
 
   Stream<List<Donation>> myDonations() {
@@ -413,6 +454,13 @@ class DataService {
         'type': 'citizen',
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      // Send OneSignal push (no server required).
+      await OneSignalApiService.sendToAll(
+        title: 'নতুন নাগরিক যোগ হয়েছে',
+        body: '$displayName গ্রামে যোগদান করেছেন',
+        type: 'citizen',
+      );
     }
 
     return isNew;
@@ -464,5 +512,65 @@ class DataService {
     if (user == null) return null;
     final doc = await _firestore.collection('users').doc(user.uid).get();
     return doc.data();
+  }
+
+  // ─── Offline write queue ───────────────────────────────────────────
+
+  static const _pendingWritesKey = 'pending_offline_writes';
+
+  /// Queue a write operation for later sync when device comes back online.
+  Future<void> _queueOfflineWrite(Map<String, dynamic> writeOp) async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getStringList(_pendingWritesKey) ?? [];
+    existing.add(jsonEncode(writeOp));
+    await prefs.setStringList(_pendingWritesKey, existing);
+    debugPrint('DataService: Queued offline write (${writeOp['type']})');
+  }
+
+  /// Process any pending offline writes. Call when connectivity returns.
+  Future<void> processPendingWrites() async {
+    final prefs = await SharedPreferences.getInstance();
+    final pending = prefs.getStringList(_pendingWritesKey) ?? [];
+    if (pending.isEmpty) return;
+
+    debugPrint('DataService: Processing ${pending.length} pending writes');
+    final failed = <String>[];
+
+    for (final raw in pending) {
+      try {
+        final op = jsonDecode(raw) as Map<String, dynamic>;
+        switch (op['type']) {
+          case 'donation':
+            await addDonation(
+              amount: (op['amount'] as num).toDouble(),
+              paymentMethod: op['paymentMethod'] as String,
+              transactionId: op['transactionId'] as String,
+              senderNumber: op['senderNumber'] as String,
+            );
+          case 'problem':
+            await reportProblem(
+              title: op['title'] as String,
+              description: op['description'] as String,
+              location: op['location'] as String,
+            );
+          default:
+            debugPrint('DataService: Unknown queued write type: ${op['type']}');
+        }
+      } catch (e) {
+        debugPrint('DataService: Failed to process queued write: $e');
+        failed.add(raw);
+      }
+    }
+
+    await prefs.setStringList(_pendingWritesKey, failed);
+    if (failed.isEmpty) {
+      debugPrint('DataService: All pending writes processed successfully');
+    }
+  }
+
+  /// Returns the count of pending offline writes.
+  Future<int> pendingWriteCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getStringList(_pendingWritesKey) ?? []).length;
   }
 }

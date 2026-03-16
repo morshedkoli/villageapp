@@ -1,50 +1,63 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 
-/// Push-like notification service using Firestore real-time listener +
-/// flutter_local_notifications. Works on the free Firebase Spark plan —
-/// no Cloud Functions needed.
+/// Push notification service using OneSignal.
 ///
-/// How it works:
-/// 1. Listens to the `notifications` Firestore collection in real-time.
-/// 2. When a new document appears (created after the app started), it shows
-///    a system-level local notification (heads-up / banner).
-/// 3. All devices running the app will see the notification instantly.
+/// Features:
+/// - Initializes OneSignal SDK with the configured App ID.
+/// - Requests notification permission on Android 13+ / iOS.
+/// - Sets the Firebase UID as the OneSignal external user ID so
+///   server-side targeting works per user.
+/// - Handles foreground notification display via OneSignal's built-in UI.
+/// - Keeps a Firestore real-time listener as an in-app fallback for
+///   desktop platforms (Windows / Linux) where OneSignal is unsupported.
 class PushNotificationService {
   PushNotificationService._();
   static final PushNotificationService instance = PushNotificationService._();
 
-  final FlutterLocalNotificationsPlugin _localNotifications =
-      FlutterLocalNotificationsPlugin();
+  // ── Configure your OneSignal App ID here (or via env / remote config) ──
+  static const String _oneSignalAppId = 'a8ab892b-a4ca-4161-b54b-8828c22dfc8f';
 
   StreamSubscription<QuerySnapshot>? _firestoreSub;
   StreamSubscription<User?>? _authSub;
   DateTime? _startTime;
 
-  /// Android notification channel.
-  static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
-    'village_high_importance',
-    'Village Updates',
-    description: 'গ্রামের সব আপডেট নোটিফিকেশন',
-    importance: Importance.high,
-  );
+  bool _permissionGranted = false;
+  bool get permissionGranted => _permissionGranted;
 
   /// Call once at app startup (after Firebase.initializeApp).
   Future<void> initialize() async {
     _startTime = DateTime.now();
 
-    await _setupLocalNotifications();
-    _listenToAuthState();
+    // OneSignal is only supported on Android / iOS / macOS.
+    if (!kIsWeb) {
+      OneSignal.initialize(_oneSignalAppId);
 
-    debugPrint('PushNotificationService initialized (Firestore listener)');
+      // Request permission (shows system dialog on Android 13+ / iOS).
+      _permissionGranted =
+          await OneSignal.Notifications.requestPermission(true);
+      debugPrint('OneSignal permission granted: $_permissionGranted');
+
+      // Display foreground notifications using OneSignal's default UI.
+      OneSignal.Notifications.addForegroundWillDisplayListener((event) {
+        event.notification.display();
+      });
+
+      OneSignal.Notifications.addClickListener((event) {
+        debugPrint(
+            'OneSignal notification tapped: ${event.notification.additionalData}');
+      });
+    }
+
+    _listenToAuthState();
+    debugPrint('PushNotificationService initialized (OneSignal + Firestore)');
   }
 
-  /// Stop listening (call on dispose if needed).
+  /// Stop all listeners and log out of OneSignal.
   void dispose() {
     _authSub?.cancel();
     _authSub = null;
@@ -52,40 +65,48 @@ class PushNotificationService {
     _firestoreSub = null;
   }
 
-  Future<void> _setupLocalNotifications() async {
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const darwinInit = DarwinInitializationSettings();
-    const initSettings = InitializationSettings(
-      android: androidInit,
-      iOS: darwinInit,
-      macOS: darwinInit,
-    );
-    await _localNotifications.initialize(initSettings);
-
-    // Create the notification channel on Android.
-    if (!kIsWeb && Platform.isAndroid) {
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(_channel);
+  /// Public method to re-request permission (e.g., from settings screen).
+  Future<bool> requestPermission() async {
+    if (!kIsWeb) {
+      _permissionGranted =
+          await OneSignal.Notifications.requestPermission(true);
     }
+    return _permissionGranted;
   }
 
-  /// Wait for the user to authenticate before listening to Firestore.
+  // ─── Auth state: login / logout OneSignal ────────────────────────
+
   void _listenToAuthState() {
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user != null) {
-        _startListening();
+        _onLogin(user);
       } else {
-        _firestoreSub?.cancel();
-        _firestoreSub = null;
+        _onLogout();
       }
     });
   }
 
-  /// Listen to the most recent notification doc and show a local notification
-  /// for any doc created after the app started.
-  void _startListening() {
+  Future<void> _onLogin(User user) async {
+    if (!kIsWeb) {
+      // Link OneSignal device to the Firebase UID for targeted pushes.
+      await OneSignal.login(user.uid);
+      debugPrint('OneSignal logged in as: ${user.uid}');
+    }
+    _startFirestoreListener();
+  }
+
+  void _onLogout() {
+    if (!kIsWeb) {
+      OneSignal.logout();
+    }
+    _firestoreSub?.cancel();
+    _firestoreSub = null;
+  }
+
+  // ─── Firestore real-time listener (fallback / in-app display) ────
+
+  void _startFirestoreListener() {
+    _firestoreSub?.cancel();
     _firestoreSub = FirebaseFirestore.instance
         .collection('notifications')
         .orderBy('createdAt', descending: true)
@@ -93,50 +114,23 @@ class PushNotificationService {
         .snapshots()
         .listen((snapshot) {
       for (final change in snapshot.docChanges) {
-        if (change.type == DocumentChangeType.added) {
-          final data = change.doc.data();
-          if (data == null) continue;
+        if (change.type != DocumentChangeType.added) continue;
 
-          // Only show notifications created after the app started.
-          final createdAt = data['createdAt'] as Timestamp?;
-          if (createdAt == null) continue;
-          if (_startTime != null &&
-              createdAt.toDate().isBefore(_startTime!)) {
-            continue;
-          }
+        final data = change.doc.data();
+        if (data == null) continue;
 
-          _showLocalNotification(
-            id: change.doc.id.hashCode,
-            title: data['title'] as String? ?? 'Village Update',
-            body: data['body'] as String? ?? '',
-          );
+        final createdAt = data['createdAt'] as Timestamp?;
+        if (createdAt == null) continue;
+        if (_startTime != null &&
+            createdAt.toDate().isBefore(_startTime!)) continue;
+
+        // On desktop (no OneSignal), log the incoming notification so the
+        // app's own notification UI can pick it up via Firestore.
+        if (kIsWeb || !_permissionGranted) {
+          debugPrint(
+              'In-app notification: ${data['title']} — ${data['body']}');
         }
       }
-    }, onError: (e) {
-      debugPrint('Notification listener error: $e');
-    });
-  }
-
-  void _showLocalNotification({
-    required int id,
-    required String title,
-    required String body,
-  }) {
-    _localNotifications.show(
-      id,
-      title,
-      body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channel.id,
-          _channel.name,
-          channelDescription: _channel.description,
-          icon: '@mipmap/ic_launcher',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-        iOS: const DarwinNotificationDetails(),
-      ),
-    );
+    }, onError: (e) => debugPrint('Notification listener error: $e'));
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'onboarding_screen.dart';
 import 'screens.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -106,13 +107,51 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     _shimmerController.repeat();
 
-    // Navigate after splash completes
+    // Check onboarding status while user sees splash.
+    final onboardingDone = await isOnboardingComplete();
+
+    // Wait for remaining animation time.
     await Future.delayed(const Duration(milliseconds: 2600));
     if (!mounted) return;
+
+    if (onboardingDone) {
+      _navigateToRoot();
+    } else {
+      _navigateToOnboarding();
+    }
+  }
+
+  void _navigateToRoot() {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 600),
-        pageBuilder: (context, animation, secondaryAnimation) => const RootShell(),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const RootShell(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+
+  void _navigateToOnboarding() {
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 600),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            OnboardingScreen(onComplete: () {
+          Navigator.of(context).pushReplacement(
+            PageRouteBuilder(
+              transitionDuration: const Duration(milliseconds: 500),
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  const RootShell(),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          );
+        }),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -169,7 +208,8 @@ class _SplashScreenState extends State<SplashScreen>
                     borderRadius: BorderRadius.circular(32),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFF9500).withValues(alpha: 0.3),
+                        color:
+                            const Color(0xFFFF9500).withValues(alpha: 0.3),
                         blurRadius: 40,
                         spreadRadius: 5,
                       ),

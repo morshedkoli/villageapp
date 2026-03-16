@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import 'connectivity_service.dart';
 import 'data_service.dart';
 import 'models.dart';
 import 'ui/accessibility.dart';
@@ -510,13 +511,56 @@ class _RootShellState extends State<RootShell> {
   void initState() {
     super.initState();
     _index = widget.initialIndex.clamp(0, 2);
+    // Process pending offline writes when connectivity returns.
+    ConnectivityService.instance.addListener(_onConnectivityChanged);
+  }
+
+  @override
+  void dispose() {
+    ConnectivityService.instance.removeListener(_onConnectivityChanged);
+    super.dispose();
+  }
+
+  void _onConnectivityChanged() {
+    if (mounted) setState(() {});
+    if (ConnectivityService.instance.isOnline) {
+      DataService.instance.processPendingWrites();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isOffline = !ConnectivityService.instance.isOnline;
     return Scaffold(
       drawer: _buildSidebarMenu(context),
-      body: _screens[_index],
+      body: Column(
+        children: [
+          // Offline indicator banner
+          if (isOffline)
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 4,
+                bottom: 6,
+                left: 16,
+                right: 16,
+              ),
+              color: const Color(0xFF8E8E93),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.cloud_off_rounded, color: Colors.white, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    tr('You are offline — showing cached data', 'আপনি অফলাইন — ক্যাশ করা ডেটা দেখানো হচ্ছে'),
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(child: _screens[_index]),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final ok = await _ensureLogin(context);
@@ -544,6 +588,32 @@ class HomeScreen extends StatelessWidget {
     return StreamBuilder<VillageOverview>(
       stream: data.villageOverview(),
       builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+          return const Center(child: CircularProgressIndicator(color: Color(0xFFFF9500)));
+        }
+        if (snap.hasError && !snap.hasData) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off_rounded, size: 48, color: Color(0xFF8E8E93)),
+                  const SizedBox(height: 12),
+                  Text(
+                    tr('Could not load data', 'ডেটা লোড করা যায়নি'),
+                    style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1C1C1E)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    tr('Pull down to retry', 'রিফ্রেশ করতে টানুন'),
+                    style: const TextStyle(color: Color(0xFF8E8E93), fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
         final overview = snap.data ?? const VillageOverview(name: 'Our Village', totalCitizens: 0, totalFundCollected: 0, totalSpent: 0);
         return RefreshIndicator(
           color: const Color(0xFFFF9500),
@@ -1209,6 +1279,7 @@ class _DonateScreenState extends State<DonateScreen> {
     setState(() => _submitting = true);
     try {
       final amount = double.parse(_amount.text.trim());
+      final wasOffline = !ConnectivityService.instance.isOnline;
       await DataService.instance.addDonation(
         amount: amount,
         paymentMethod: _method!,
@@ -1216,6 +1287,12 @@ class _DonateScreenState extends State<DonateScreen> {
         senderNumber: _senderNumber.text.trim(),
       );
       if (!mounted) return;
+      if (wasOffline) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(tr('Donation saved offline — will sync when online', 'অনুদান অফলাইনে সংরক্ষিত — অনলাইনে এলে সিঙ্ক হবে')),
+          backgroundColor: const Color(0xFF8E8E93),
+        ));
+      }
       setState(() => _submitted = true);
     } catch (e) {
       if (!mounted) return;
@@ -1743,7 +1820,15 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     try {
       await DataService.instance.reportProblem(title: _title.text.trim(), description: _description.text.trim(), location: _location.text.trim(), photo: _photo);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Problem reported successfully', 'সমস্যা সফলভাবে রিপোর্ট করা হয়েছে'))));
+      final offlineQueued = !ConnectivityService.instance.isOnline;
+      if (offlineQueued) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(tr('Report saved offline', 'রিপোর্ট অফলাইনে সংরক্ষিত')),
+          backgroundColor: const Color(0xFF8E8E93),
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr('Problem reported successfully', 'সমস্যা সফলভাবে রিপোর্ট করা হয়েছে'))));
+      }
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
