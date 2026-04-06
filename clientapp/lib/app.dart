@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'splash_screen.dart';
 import 'ui/accessibility.dart';
+import 'ui/design_system.dart';
 
 class VillageDevelopmentApp extends StatefulWidget {
   const VillageDevelopmentApp({super.key});
@@ -34,17 +35,17 @@ class _VillageDevelopmentAppState extends State<VillageDevelopmentApp> {
   @override
   Widget build(BuildContext context) {
     final settings = accessibilityController.value;
-    const accent = Color(0xFFFF9500);
-    const primary = Color(0xFF1C1C1E);
-    const secondary = Color(0xFF8E8E93);
-    const borderColor = Color(0xFFE5E7EB);
+    const accent = AppColors.primary;
+    const primary = AppColors.textPrimary;
+    const secondary = AppColors.textSecondary;
+    const borderColor = AppColors.border;
     final background = settings.highContrast
-        ? const Color(0xFFF2F2F7)
-        : const Color(0xFFFFFFFF);
-    const surface = Colors.white;
+        ? AppColors.surfaceVariant
+        : AppColors.background;
+    const surface = AppColors.surface;
     final foreground = settings.highContrast
         ? const Color(0xFF000000)
-        : const Color(0xFF1C1C1E);
+        : AppColors.textPrimary;
 
     final colorScheme = ColorScheme.fromSeed(
       seedColor: accent,
@@ -58,7 +59,7 @@ class _VillageDevelopmentAppState extends State<VillageDevelopmentApp> {
       titleLarge: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.3),
       titleMedium: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.1),
       bodyLarge: const TextStyle(fontSize: 15, fontWeight: FontWeight.w400),
-      bodyMedium: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Color(0xFF8E8E93)),
+      bodyMedium: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textSecondary),
       labelLarge: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
     );
     final textTheme = baseTextTheme.apply(
@@ -103,8 +104,7 @@ class _VillageDevelopmentAppState extends State<VillageDevelopmentApp> {
           shadowColor: Colors.transparent,
           margin: const EdgeInsets.symmetric(vertical: 6),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: borderColor),
+            borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
@@ -115,28 +115,28 @@ class _VillageDevelopmentAppState extends State<VillageDevelopmentApp> {
           indicatorColor: Colors.transparent,
           iconTheme: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
-              return const IconThemeData(color: accent, size: 26);
+              return const IconThemeData(color: AppColors.primary, size: 26);
             }
-            return const IconThemeData(color: Color(0xFF8E8E93), size: 26);
+            return const IconThemeData(color: AppColors.textSecondary, size: 26);
           }),
           labelTextStyle: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
               return textTheme.labelSmall?.copyWith(
-                color: accent,
+                color: AppColors.primary,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0,
               );
             }
             return textTheme.labelSmall?.copyWith(
-              color: const Color(0xFF8E8E93),
+              color: AppColors.textSecondary,
               letterSpacing: 0,
             );
           }),
         ),
         chipTheme: ChipThemeData(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.pill)),
           side: const BorderSide(color: borderColor),
-          selectedColor: const Color(0xFFFFF0E0),
+          selectedColor: AppColors.primary.withValues(alpha: 0.12),
           backgroundColor: surface,
           labelStyle: textTheme.bodySmall?.copyWith(
             color: primary,
@@ -165,7 +165,7 @@ class _VillageDevelopmentAppState extends State<VillageDevelopmentApp> {
               BorderSide(color: borderColor),
             ),
             shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
             ),
             visualDensity: VisualDensity.compact,
           ),
@@ -174,9 +174,9 @@ class _VillageDevelopmentAppState extends State<VillageDevelopmentApp> {
           style: FilledButton.styleFrom(
             backgroundColor: accent,
             foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(52),
+            minimumSize: const Size.fromHeight(54),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
             textStyle: textTheme.labelLarge?.copyWith(
               fontWeight: FontWeight.w600,
@@ -186,10 +186,11 @@ class _VillageDevelopmentAppState extends State<VillageDevelopmentApp> {
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            foregroundColor: primary,
-            side: const BorderSide(color: borderColor),
+            foregroundColor: accent,
+            side: BorderSide(color: accent.withValues(alpha: 0.3)),
+            minimumSize: const Size.fromHeight(52),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
           ),
         ),
@@ -207,15 +208,15 @@ class _VillageDevelopmentAppState extends State<VillageDevelopmentApp> {
             vertical: 16,
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.md),
             borderSide: const BorderSide(color: borderColor),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.md),
             borderSide: const BorderSide(color: borderColor),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.md),
             borderSide: const BorderSide(color: accent, width: 1.5),
           ),
           hintStyle: const TextStyle(color: secondary),
@@ -223,15 +224,15 @@ class _VillageDevelopmentAppState extends State<VillageDevelopmentApp> {
         ),
         snackBarTheme: SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          backgroundColor: primary,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+          backgroundColor: AppColors.textPrimary,
         ),
         floatingActionButtonTheme: FloatingActionButtonThemeData(
           backgroundColor: accent,
           foregroundColor: Colors.white,
-          elevation: 2,
+          elevation: 4,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
         ),
         bottomSheetTheme: const BottomSheetThemeData(

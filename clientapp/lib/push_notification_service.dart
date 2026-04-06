@@ -121,8 +121,9 @@ class PushNotificationService {
 
         final createdAt = data['createdAt'] as Timestamp?;
         if (createdAt == null) continue;
-        if (_startTime != null &&
-            createdAt.toDate().isBefore(_startTime!)) continue;
+        if (_startTime != null && createdAt.toDate().isBefore(_startTime!)) {
+          continue;
+        }
 
         // On desktop (no OneSignal), log the incoming notification so the
         // app's own notification UI can pick it up via Firestore.

@@ -91,6 +91,8 @@ class ProblemReport {
     required this.location,
     required this.createdAt,
     required this.reportedBy,
+    required this.upvotes,
+    required this.downvotes,
   });
 
   final String id;
@@ -101,6 +103,11 @@ class ProblemReport {
   final String location;
   final DateTime createdAt;
   final String reportedBy;
+  final int upvotes;
+  final int downvotes;
+
+  /// Net vote score (upvotes - downvotes)
+  int get voteScore => upvotes - downvotes;
 
   factory ProblemReport.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final map = doc.data() ?? <String, dynamic>{};
@@ -113,6 +120,8 @@ class ProblemReport {
       location: (map['location'] as String?) ?? '',
       createdAt: _readDate(map['createdAt']),
       reportedBy: (map['reportedByName'] as String?) ?? 'Citizen',
+      upvotes: (map['upvotes'] as int?) ?? 0,
+      downvotes: (map['downvotes'] as int?) ?? 0,
     );
   }
 }

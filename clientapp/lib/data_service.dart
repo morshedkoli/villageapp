@@ -5,11 +5,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'connectivity_service.dart';
 import 'models.dart';
-import 'onesignal_api_service.dart';
 
 class DataService {
   DataService._();
@@ -25,7 +25,10 @@ class DataService {
   User? get currentUser => _auth.currentUser;
   Stream<User?> authState() => _auth.authStateChanges();
 
-  Future<void> signOut() => _auth.signOut();
+  Future<void> signOut() async {
+    await _googleSignIn.signOut();
+    await _auth.signOut();
+  }
 
   Future<void> sendLoginLink(String email) async {
     await _auth.sendSignInLinkToEmail(
@@ -33,7 +36,7 @@ class DataService {
       actionCodeSettings: ActionCodeSettings(
         url: 'https://doulatpara.page.link/login',
         handleCodeInApp: true,
-        androidPackageName: 'com.example.doulatpara',
+        androidPackageName: 'com.murshedkoli.alislah',
         iOSBundleId: 'com.example.doulatpara',
       ),
     );
@@ -49,6 +52,8 @@ class DataService {
 
   /// Returns `true` if this is a brand-new user (profile setup needed).
   Future<bool> signInWithGoogle() async {
+    // Ensure a clean session before opening the account picker.
+    await _googleSignIn.signOut();
     final googleUser = await _googleSignIn.signIn();
     if (googleUser == null) return false;
     final googleAuth = await googleUser.authentication;
@@ -65,61 +70,231 @@ class DataService {
     }
   }
 
+  /// Wraps a Firestore stream with error handling for web platform issues.
+  /// Returns the last known value on transient errors instead of breaking the stream.
+  Stream<T> _handleStreamErrors<T>(Stream<T> source, T fallback) {
+    return source.handleError(
+      (error, stackTrace) {
+        debugPrint('DataService: Stream error - $error');
+        // On web, Firestore can throw internal assertion errors during refresh.
+        // Log the error but don't break the stream - return fallback value.
+      },
+      test: (error) {
+        // Handle Firestore internal errors gracefully
+        final errorStr = error.toString();
+        return errorStr.contains('INTERNAL ASSERTION FAILED') ||
+            errorStr.contains('Unexpected state');
+      },
+    );
+  }
+
   Stream<VillageOverview> villageOverview() {
-    return _firestore
-        .collection('villages')
-        .doc(villageDocId)
-        .snapshots()
-        .map(
-          (doc) => VillageOverview.fromMap(doc.data() ?? <String, dynamic>{}),
-        );
+    return _handleStreamErrors(
+      _firestore
+          .collection('villages')
+          .doc(villageDocId)
+          .snapshots()
+          .map(
+            (doc) => VillageOverview.fromMap(doc.data() ?? <String, dynamic>{}),
+          ),
+      const VillageOverview(
+        name: 'Our Village',
+        totalCitizens: 0,
+        totalFundCollected: 0,
+        totalSpent: 0,
+      ),
+    );
   }
 
   Stream<List<Donation>> donations({int limit = 100}) {
-    return _firestore
-        .collection('donations')
-        .where('status', isEqualTo: 'Approved')
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snap) => snap.docs.map(Donation.fromDoc).toList());
+    return _handleStreamErrors(
+      _firestore
+          .collection('donations')
+          .where('status', isEqualTo: 'Approved')
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .snapshots()
+          .map((snap) => snap.docs.map(Donation.fromDoc).toList()),
+      const <Donation>[],
+    );
   }
 
   Stream<List<Donation>> pendingDonations() {
-    return _firestore
-        .collection('donations')
-        .where('status', isEqualTo: 'Pending')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs.map(Donation.fromDoc).toList());
+    return _handleStreamErrors(
+      _firestore
+          .collection('donations')
+          .where('status', isEqualTo: 'Pending')
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((snap) => snap.docs.map(Donation.fromDoc).toList()),
+      const <Donation>[],
+    );
   }
 
   Stream<Map<String, Map<String, String>>> paymentAccounts() {
-    return _firestore
-        .collection('villages')
-        .doc(villageDocId)
-        .snapshots()
-        .map((doc) {
-      final data = doc.data() ?? {};
-      final accounts = data['paymentAccounts'] as Map<String, dynamic>? ?? {};
-      return accounts.map((k, v) {
-        if (v is Map) {
-          final m = <String, String>{
-            'number': (v['number'] ?? '').toString(),
-            'name': (v['name'] ?? '').toString(),
-          };
-          if (v['bankName'] != null) m['bankName'] = v['bankName'].toString();
-          if (v['branch'] != null) m['branch'] = v['branch'].toString();
-          return MapEntry(k, m);
+    return _handleStreamErrors(
+      _firestore
+          .collection('villages')
+          .doc(villageDocId)
+          .snapshots()
+          .map((doc) {
+        final data = doc.data() ?? {};
+        final raw = data['paymentAccounts'];
+        
+        debugPrint('=== PAYMENT ACCOUNTS STREAM DEBUG ===');
+        debugPrint('Raw paymentAccounts data: $raw');
+        debugPrint('Data type: ${raw.runtimeType}');
+        
+        final result = <String, Map<String, String>>{};
+
+        // Handle array format (from web admin panel)
+        if (raw is List) {
+          debugPrint('Processing as List (${raw.length} items)');
+          for (final item in raw) {
+            if (item is Map) {
+              final rawType = (item['type'] ?? '').toString();
+              debugPrint('  Item type: $rawType, number: ${item['number']}, name: ${item['name']}');
+              if (rawType.isNotEmpty) {
+                // Normalize type to match mobile app keys (bkash -> bKash, etc.)
+                final type = _normalizePaymentType(rawType);
+                debugPrint('  Normalized type: $rawType -> $type');
+                final m = <String, String>{
+                  'number': (item['number'] ?? '').toString(),
+                  'name': (item['name'] ?? '').toString(),
+                };
+                if (item['bankName'] != null) m['bankName'] = item['bankName'].toString();
+                if (item['branch'] != null) m['branch'] = item['branch'].toString();
+                result[type] = m;
+              }
+            }
+          }
+          debugPrint('Result from List: $result');
+          return result;
         }
-        return MapEntry(k, {'number': v.toString(), 'name': ''});
-      });
-    });
+
+        // Handle legacy map format
+        debugPrint('Processing as Map');
+        final accounts = raw as Map<String, dynamic>? ?? {};
+        return accounts.map((k, v) {
+          final normalizedKey = _normalizePaymentType(k);
+          if (v is Map) {
+            final m = <String, String>{
+              'number': (v['number'] ?? '').toString(),
+              'name': (v['name'] ?? '').toString(),
+            };
+            if (v['bankName'] != null) m['bankName'] = v['bankName'].toString();
+            if (v['branch'] != null) m['branch'] = v['branch'].toString();
+            return MapEntry(normalizedKey, m);
+          }
+          return MapEntry(normalizedKey, {'number': v.toString(), 'name': ''});
+        });
+      }),
+      const <String, Map<String, String>>{},
+    );
+  }
+
+  /// Returns donation accounts from villages/main_village.paymentAccounts.
+  /// Supports both the new array format and legacy map format.
+  Stream<List<Map<String, String>>> donationAccounts() {
+    return _handleStreamErrors(
+      _firestore
+          .collection('villages')
+          .doc(villageDocId)
+          .snapshots()
+          .map((doc) {
+        final data = doc.data() ?? <String, dynamic>{};
+        final raw = data['paymentAccounts'];
+        final result = <Map<String, String>>[];
+
+        if (raw is List) {
+          for (final item in raw) {
+            if (item is! Map) continue;
+            final id = (item['id'] ?? '').toString().trim();
+            final type = _normalizePaymentType((item['type'] ?? '').toString());
+            final number = (item['number'] ?? '').toString().trim();
+            final name = (item['name'] ?? '').toString().trim();
+            final bankName = (item['bankName'] ?? '').toString().trim();
+            final branch = (item['branch'] ?? '').toString().trim();
+            result.add({
+              'id': id.isNotEmpty
+                  ? id
+                  : '${type.toLowerCase()}_${result.length + 1}',
+              'type': type,
+              'number': number,
+              'name': name,
+              if (bankName.isNotEmpty) 'bankName': bankName,
+              if (branch.isNotEmpty) 'branch': branch,
+            });
+          }
+          return result;
+        }
+
+        final legacy = raw as Map<String, dynamic>? ?? <String, dynamic>{};
+        for (final entry in legacy.entries) {
+          final type = _normalizePaymentType(entry.key);
+          if (entry.value is Map) {
+            final mapValue = entry.value as Map;
+            final number = (mapValue['number'] ?? '').toString().trim();
+            final name = (mapValue['name'] ?? '').toString().trim();
+            final bankName = (mapValue['bankName'] ?? '').toString().trim();
+            final branch = (mapValue['branch'] ?? '').toString().trim();
+            result.add({
+              'id': '${type.toLowerCase()}_${result.length + 1}',
+              'type': type,
+              'number': number,
+              'name': name,
+              if (bankName.isNotEmpty) 'bankName': bankName,
+              if (branch.isNotEmpty) 'branch': branch,
+            });
+          } else {
+            result.add({
+              'id': '${type.toLowerCase()}_${result.length + 1}',
+              'type': type,
+              'number': entry.value.toString(),
+              'name': '',
+            });
+          }
+        }
+        return result;
+      }),
+      const <Map<String, String>>[],
+    );
+  }
+
+  /// Normalize payment type from admin panel format to mobile app format
+  static String _normalizePaymentType(String type) {
+    final lower = type.toLowerCase();
+    switch (lower) {
+      case 'bkash':
+        return 'bKash';
+      case 'nagad':
+        return 'Nagad';
+      case 'rocket':
+        return 'Rocket';
+      case 'bank':
+        return 'Bank';
+      default:
+        return type; // Return as-is for unknown types
+    }
   }
 
   Future<void> updatePaymentAccounts(Map<String, Map<String, String>> accounts) async {
+    // Convert to array format (compatible with web admin panel)
+    final List<Map<String, dynamic>> accountsList = [];
+    accounts.forEach((type, details) {
+      if (details['number']?.isNotEmpty ?? false) {
+        accountsList.add({
+          'id': type.toLowerCase(),
+          'type': type,
+          'number': details['number'] ?? '',
+          'name': details['name'] ?? '',
+          if (details['bankName']?.isNotEmpty ?? false) 'bankName': details['bankName'],
+          if (details['branch']?.isNotEmpty ?? false) 'branch': details['branch'],
+        });
+      }
+    });
     await _firestore.collection('villages').doc(villageDocId).set({
-      'paymentAccounts': accounts,
+      'paymentAccounts': accountsList,
     }, SetOptions(merge: true));
   }
 
@@ -133,6 +308,7 @@ class DataService {
   Stream<List<ProblemReport>> problems({int limit = 100}) {
     return _firestore
         .collection('problems')
+        .where('status', whereIn: ['Approved', 'Completed'])
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
@@ -149,21 +325,100 @@ class DataService {
   }
 
   Stream<List<Citizen>> citizens() {
-    return _firestore
+    // Query all users and filter client-side for isCitizen == true
+    final usersStream = _firestore
         .collection('users')
-        .where('isCitizen', isEqualTo: true)
-        .orderBy('name')
         .snapshots()
-        .map((snap) => snap.docs.map(Citizen.fromDoc).toList());
+        .map(
+          (snap) => snap.docs
+              .where((doc) => doc.data()['isCitizen'] == true)
+              .map((doc) => _citizenFromMap(doc.id, doc.data()))
+              .toList(),
+        )
+        .onErrorReturn(const <Citizen>[]);
+
+    final legacyCitizensStream = _firestore
+        .collection('citizens')
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map((doc) => _citizenFromMap(doc.id, doc.data()))
+              .toList(),
+        )
+        .onErrorReturn(const <Citizen>[]);
+
+    return CombineLatestStream.combine2(
+      usersStream,
+      legacyCitizensStream,
+      (List<Citizen> users, List<Citizen> legacyCitizens) {
+        final merged = <String, Citizen>{};
+        for (final c in users) {
+          merged[_citizenIdentity(c)] = c;
+        }
+        for (final c in legacyCitizens) {
+          merged.putIfAbsent(_citizenIdentity(c), () => c);
+        }
+        final list = merged.values.toList()
+          ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        return list;
+      },
+    );
   }
 
-  /// Returns a real-time count of registered citizens from the users collection.
+  /// Returns a real-time count of registered citizens across users and citizens collections.
   Stream<int> citizenCount() {
-    return _firestore
-        .collection('users')
-        .where('isCitizen', isEqualTo: true)
-        .snapshots()
-        .map((snap) => snap.size);
+    return citizens().map((items) => items.length);
+  }
+
+  Citizen _citizenFromMap(String id, Map<String, dynamic> map) {
+    final name = ((map['name'] as String?) ??
+            (map['fullName'] as String?) ??
+            (map['displayName'] as String?) ??
+            (map['email'] as String?) ??
+            '')
+        .trim();
+
+    final profession = ((map['profession'] as String?) ??
+            (map['occupation'] as String?) ??
+            (map['job'] as String?) ??
+            '')
+        .trim();
+
+    final phone = ((map['phone'] as String?) ??
+            (map['phoneNumber'] as String?) ??
+            (map['mobile'] as String?) ??
+            '')
+        .trim();
+
+    final photoUrl = ((map['photoUrl'] as String?) ??
+            (map['profileImage'] as String?) ??
+            (map['avatar'] as String?) ??
+            '')
+        .trim();
+
+    final village = ((map['village'] as String?) ??
+            (map['address'] as String?) ??
+            (map['location'] as String?) ??
+            '')
+        .trim();
+
+    return Citizen(
+      id: id,
+      name: name,
+      profession: profession,
+      phone: phone,
+      photoUrl: photoUrl,
+      village: village,
+    );
+  }
+
+  String _citizenIdentity(Citizen c) {
+    final cleanPhone = c.phone.replaceAll(RegExp(r'[^0-9+]'), '').toLowerCase();
+    if (cleanPhone.isNotEmpty) return 'phone:$cleanPhone';
+    final cleanName = c.name.trim().toLowerCase();
+    final cleanVillage = c.village.trim().toLowerCase();
+    if (cleanName.isNotEmpty) return 'name:$cleanName|village:$cleanVillage';
+    return 'id:${c.id}';
   }
 
   Stream<List<AppNotification>> notifications({int limit = 100}) {
@@ -186,6 +441,23 @@ class DataService {
         .collection('notification_reads')
         .snapshots()
         .map((snap) => snap.docs.map((d) => d.id).toSet());
+  }
+
+  /// Returns a stream of unread notification count.
+  /// Combines notifications collection with user's notification_reads subcollection.
+  Stream<int> unreadNotificationCount() {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return Stream<int>.value(0);
+    }
+    
+    return CombineLatestStream.combine2(
+      notifications(),
+      myReadNotificationIds(),
+      (List<AppNotification> notifications, Set<String> readIds) {
+        return notifications.where((n) => !readIds.contains(n.id)).length;
+      },
+    );
   }
 
   Future<void> markNotificationRead(String notificationId) async {
@@ -236,6 +508,8 @@ class DataService {
     required String paymentMethod,
     required String transactionId,
     required String senderNumber,
+    String? receivedAccountId,
+    String? receivedAccountLabel,
   }) async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -250,6 +524,8 @@ class DataService {
         'paymentMethod': paymentMethod,
         'transactionId': transactionId,
         'senderNumber': senderNumber,
+        'receivedAccountId': receivedAccountId,
+        'receivedAccountLabel': receivedAccountLabel,
       });
       return;
     }
@@ -263,6 +539,10 @@ class DataService {
       'donorName': donorName,
       'amount': amount,
       'paymentMethod': paymentMethod,
+      if (receivedAccountId != null && receivedAccountId.isNotEmpty)
+        'receivedAccountId': receivedAccountId,
+      if (receivedAccountLabel != null && receivedAccountLabel.isNotEmpty)
+        'receivedAccountLabel': receivedAccountLabel,
       'transactionId': transactionId,
       'senderNumber': senderNumber,
       'status': 'Pending',
@@ -304,12 +584,6 @@ class DataService {
       });
     });
 
-    // Send OneSignal push (no server required).
-    await OneSignalApiService.sendToAll(
-      title: 'নতুন অনুদান',
-      body: '$donorName ৳$amount অনুদান দিয়েছেন',
-      type: 'donation',
-    );
   }
 
   Future<void> rejectDonation(String donationId) async {
@@ -331,6 +605,9 @@ class DataService {
 
     // Queue for later if offline (photo will be lost).
     if (!ConnectivityService.instance.isOnline) {
+      if (photo != null) {
+        throw StateError('Cannot attach photos while offline. Please connect to internet or submit without photo.');
+      }
       await _queueOfflineWrite({
         'type': 'problem',
         'title': title,
@@ -346,22 +623,44 @@ class DataService {
 
     var photoUrl = '';
     if (photo != null) {
-      // Upload image to imgbb
+      // Validate image size (max 5MB)
       final bytes = await photo.readAsBytes();
+      if (bytes.length > 5 * 1024 * 1024) {
+        throw StateError('Image size too large. Please select an image smaller than 5MB.');
+      }
+      
       final base64Image = base64Encode(bytes);
-      const imgbbApiKey = '707ad238025806ece51d9e63679151f7';
-      final request = await HttpClient().postUrl(
-        Uri.parse('https://api.imgbb.com/1/upload?key=$imgbbApiKey'),
-      );
-      request.headers.contentType = ContentType('application', 'x-www-form-urlencoded');
-      request.write('image=${Uri.encodeComponent(base64Image)}');
-      final res = await request.close();
-      final resBody = await res.transform(utf8.decoder).join();
-      final json = jsonDecode(resBody);
-      if (json['success'] == true) {
-        photoUrl = json['data']['url'];
-      } else {
-        throw Exception('Image upload failed: ${json['error']['message']}');
+      
+      // Get API key from environment (should be set up securely)
+      const imgbbApiKey = String.fromEnvironment('IMGBB_API_KEY', defaultValue: '');
+      if (imgbbApiKey.isEmpty) {
+        throw StateError('Image upload is not configured. Please contact administrator or submit without photo.');
+      }
+      
+      try {
+        final httpClient = HttpClient()..connectionTimeout = const Duration(seconds: 30);
+        final request = await httpClient.postUrl(
+          Uri.parse('https://api.imgbb.com/1/upload?key=$imgbbApiKey'),
+        );
+        request.headers.contentType = ContentType('application', 'x-www-form-urlencoded');
+        request.write('image=${Uri.encodeComponent(base64Image)}');
+        final res = await request.close().timeout(const Duration(seconds: 60));
+        
+        if (res.statusCode != 200) {
+          throw StateError('Image upload failed with status ${res.statusCode}');
+        }
+        
+        final resBody = await res.transform(utf8.decoder).join();
+        final json = jsonDecode(resBody);
+        if (json['success'] == true) {
+          photoUrl = json['data']['url'];
+        } else {
+          final errorMsg = json['error']?['message'] ?? 'Unknown error';
+          throw StateError('Image upload failed: $errorMsg');
+        }
+      } catch (e) {
+        if (e is StateError) rethrow;
+        throw StateError('Image upload failed: ${e.toString()}');
       }
     }
 
@@ -373,10 +672,29 @@ class DataService {
       'status': 'Pending',
       'reportedBy': user.uid,
       'reportedByName': reporterName,
+      'upvotes': 0,
+      'downvotes': 0,
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // Write an in-app notification for all users.
+    // Note: Notifications will be sent when admin approves the problem,
+    // not when it's submitted (since pending problems are hidden from citizens).
+  }
+
+  /// Admin approves a pending problem, making it visible to all citizens.
+  Future<void> approveProblem(String problemId) async {
+    final problemDoc = await _firestore.collection('problems').doc(problemId).get();
+    final data = problemDoc.data();
+    if (data == null) throw StateError('Problem not found.');
+
+    final title = data['title'] as String? ?? 'Untitled';
+    final reporterName = data['reportedByName'] as String? ?? 'Citizen';
+
+    await _firestore.collection('problems').doc(problemId).update({
+      'status': 'Approved',
+    });
+
+    // Now send notification since problem is visible
     await _firestore.collection('notifications').add({
       'title': 'নতুন সমস্যা রিপোর্ট',
       'body': '$reporterName "$title" সমস্যা রিপোর্ট করেছেন',
@@ -384,12 +702,28 @@ class DataService {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // Send OneSignal push (no server required).
-    await OneSignalApiService.sendToAll(
-      title: 'নতুন সমস্যা রিপোর্ট',
-      body: '$reporterName "$title" সমস্যা রিপোর্ট করেছেন',
-      type: 'problem',
-    );
+  }
+
+  /// Admin rejects a pending problem.
+  Future<void> rejectProblem(String problemId) async {
+    await _firestore.collection('problems').doc(problemId).delete();
+  }
+
+  /// Admin marks a problem as completed.
+  Future<void> completeProblem(String problemId) async {
+    await _firestore.collection('problems').doc(problemId).update({
+      'status': 'Completed',
+    });
+  }
+
+  /// Get all pending problems (for admin review).
+  Stream<List<ProblemReport>> pendingProblems() {
+    return _firestore
+        .collection('problems')
+        .where('status', isEqualTo: 'Pending')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map(ProblemReport.fromDoc).toList());
   }
 
   Stream<List<Donation>> myDonations() {
@@ -416,6 +750,89 @@ class DataService {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snap) => snap.docs.map(ProblemReport.fromDoc).toList());
+  }
+
+  // ─── Problem Voting ─────────────────────────────────────────────────
+
+  /// Vote on a problem report. Pass `1` for upvote, `-1` for downvote.
+  /// If the user already voted the same way, the vote is removed.
+  Future<void> voteOnProblem(String problemId, int vote) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw StateError('Login required to vote.');
+    }
+    if (vote != 1 && vote != -1) {
+      throw ArgumentError('Vote must be 1 (upvote) or -1 (downvote).');
+    }
+
+    final problemRef = _firestore.collection('problems').doc(problemId);
+    final voteRef = problemRef.collection('votes').doc(user.uid);
+
+    // Get current vote status
+    final voteDoc = await voteRef.get();
+    final existingVote = voteDoc.exists ? (voteDoc.data()?['vote'] as int?) : null;
+
+    final batch = _firestore.batch();
+
+    if (existingVote == vote) {
+      // Same vote again = remove vote (toggle off)
+      batch.delete(voteRef);
+      if (vote == 1) {
+        batch.set(problemRef, {'upvotes': FieldValue.increment(-1)}, SetOptions(merge: true));
+      } else {
+        batch.set(problemRef, {'downvotes': FieldValue.increment(-1)}, SetOptions(merge: true));
+      }
+    } else if (existingVote != null) {
+      // Changing vote direction
+      batch.set(voteRef, {
+        'vote': vote,
+        'votedAt': FieldValue.serverTimestamp(),
+        'voterId': user.uid,
+      });
+      if (vote == 1) {
+        // Was downvote, now upvote
+        batch.set(problemRef, {
+          'upvotes': FieldValue.increment(1),
+          'downvotes': FieldValue.increment(-1),
+        }, SetOptions(merge: true));
+      } else {
+        // Was upvote, now downvote
+        batch.set(problemRef, {
+          'upvotes': FieldValue.increment(-1),
+          'downvotes': FieldValue.increment(1),
+        }, SetOptions(merge: true));
+      }
+    } else {
+      // New vote - first ensure problem has vote fields
+      batch.set(voteRef, {
+        'vote': vote,
+        'votedAt': FieldValue.serverTimestamp(),
+        'voterId': user.uid,
+      });
+      if (vote == 1) {
+        batch.set(problemRef, {'upvotes': FieldValue.increment(1)}, SetOptions(merge: true));
+      } else {
+        batch.set(problemRef, {'downvotes': FieldValue.increment(1)}, SetOptions(merge: true));
+      }
+    }
+
+    await batch.commit();
+  }
+
+  /// Get the current user's vote on a specific problem.
+  /// Returns a stream with vote value (+1, -1, or null if not voted).
+  Stream<int?> myVoteOnProblem(String problemId) {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return Stream<int?>.value(null);
+    }
+    return _firestore
+        .collection('problems')
+        .doc(problemId)
+        .collection('votes')
+        .doc(user.uid)
+        .snapshots()
+        .map((doc) => doc.exists ? (doc.data()?['vote'] as int?) : null);
   }
 
   /// Returns `true` if the user is new (no existing doc).
@@ -455,12 +872,6 @@ class DataService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Send OneSignal push (no server required).
-      await OneSignalApiService.sendToAll(
-        title: 'নতুন নাগরিক যোগ হয়েছে',
-        body: '$displayName গ্রামে যোগদান করেছেন',
-        type: 'citizen',
-      );
     }
 
     return isNew;
@@ -546,6 +957,8 @@ class DataService {
               paymentMethod: op['paymentMethod'] as String,
               transactionId: op['transactionId'] as String,
               senderNumber: op['senderNumber'] as String,
+              receivedAccountId: op['receivedAccountId'] as String?,
+              receivedAccountLabel: op['receivedAccountLabel'] as String?,
             );
           case 'problem':
             await reportProblem(
@@ -572,5 +985,99 @@ class DataService {
   Future<int> pendingWriteCount() async {
     final prefs = await SharedPreferences.getInstance();
     return (prefs.getStringList(_pendingWritesKey) ?? []).length;
+  }
+
+  // ─── Payment Methods (from Firestore configuration) ───────────────
+
+  /// Returns a stream of available payment methods from Firestore.
+  /// Falls back to default methods if not configured in database.
+  Stream<List<Map<String, dynamic>>> paymentMethods() async* {
+    try {
+      await for (final snap in _firestore
+          .collection('config')
+          .doc('paymentMethods')
+          .snapshots()) {
+        
+        if (!snap.exists) {
+          debugPrint('Payment methods document does not exist, using defaults');
+          yield _getDefaultPaymentMethods();
+          continue;
+        }
+        
+        final data = snap.data() ?? {};
+        final methods = data['methods'] as List<dynamic>? ?? [];
+        
+        debugPrint('Payment methods from Firestore: ${methods.length} items, data: $methods');
+        
+        if (methods.isEmpty) {
+          // Return default methods if not configured
+          debugPrint('Payment methods array is empty, using defaults');
+          yield _getDefaultPaymentMethods();
+          continue;
+        }
+        
+        final result = methods.map((m) {
+          if (m is Map<String, dynamic>) {
+            return m;
+          }
+          return <String, dynamic>{};
+        }).toList();
+        
+        debugPrint('Returning ${result.length} payment methods from Firestore');
+        yield result;
+      }
+    } catch (error) {
+      debugPrint('Error in paymentMethods stream: $error, returning defaults');
+      yield _getDefaultPaymentMethods();
+    }
+  }
+
+  /// Get default payment methods (fallback if not in database)
+  static List<Map<String, dynamic>> _getDefaultPaymentMethods() {
+    return const [
+      {
+        'key': 'bKash',
+        'bn': 'বিকাশ',
+        'color': 0xFFE2136E,
+        'icon': 'phone_android_rounded',
+      },
+      {
+        'key': 'Nagad',
+        'bn': 'নগদ',
+        'color': 0xFFFF6A00,
+        'icon': 'phone_android_rounded',
+      },
+      {
+        'key': 'Rocket',
+        'bn': 'রকেট',
+        'color': 0xFF8B2FA0,
+        'icon': 'phone_android_rounded',
+      },
+      {
+        'key': 'Bank',
+        'bn': 'ব্যাংক অ্যাকাউন্ট',
+        'color': 0xFF1E40AF,
+        'icon': 'account_balance_rounded',
+      },
+    ];
+  }
+
+  /// Update payment methods (admin only)
+  Future<void> updatePaymentMethods(List<Map<String, dynamic>> methods) async {
+    await _firestore.collection('config').doc('paymentMethods').set({
+      'methods': methods,
+      'lastUpdated': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // ─── Pending Problems Count (for UI badges) ──────────────────────
+
+  /// Returns a stream of the count of pending/unresolved problems.
+  Stream<int> pendingProblemsCount() {
+    return _firestore
+        .collection('problems')
+        .where('status', isEqualTo: 'Pending')
+        .snapshots()
+        .map((snap) => snap.size);
   }
 }

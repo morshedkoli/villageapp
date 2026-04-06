@@ -64,7 +64,18 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isSignedIn() &&
         request.resource.data.reportedBy == request.auth.uid;
-      allow update, delete: if isAdmin();
+      // Allow signed-in users to update only upvotes/downvotes for voting
+      allow update: if isAdmin() || (
+        isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'downvotes'])
+      );
+      allow delete: if isAdmin();
+
+      // Votes subcollection - users can manage their own votes (document ID = user UID)
+      match /votes/{voterId} {
+        allow read: if true;
+        allow create, update, delete: if isSignedIn() && voterId == request.auth.uid;
+      }
     }
 
   }
