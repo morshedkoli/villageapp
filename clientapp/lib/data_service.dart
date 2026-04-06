@@ -306,13 +306,21 @@ class DataService {
   }
 
   Stream<List<ProblemReport>> problems({int limit = 100}) {
+    // Query for both Approved and Completed problems
+    // Using whereIn requires special indexing, so we filter client-side for now
     return _firestore
         .collection('problems')
-        .where('status', whereIn: ['Approved', 'Completed'])
         .orderBy('createdAt', descending: true)
-        .limit(limit)
+        .limit(limit * 2) // Fetch more to account for filtering
         .snapshots()
-        .map((snap) => snap.docs.map(ProblemReport.fromDoc).toList());
+        .map((snap) {
+          final docs = snap.docs.map(ProblemReport.fromDoc).toList();
+          // Filter to only show Approved and Completed
+          return docs
+              .where((p) => p.status == 'Approved' || p.status == 'Completed')
+              .take(limit)
+              .toList();
+        });
   }
 
   Stream<List<DevelopmentProject>> projects({int limit = 100}) {
