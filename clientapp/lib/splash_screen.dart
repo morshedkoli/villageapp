@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'onboarding_screen.dart';
 import 'screens.dart';
+import 'ui/design_system.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -54,30 +55,26 @@ class _SplashScreenState extends State<SplashScreen>
         curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
       ),
     );
-    _contentSlide = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _contentController,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
-      ),
-    );
+    _contentSlide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _contentController,
+            curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
+          ),
+        );
     _featuresOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _contentController,
         curve: const Interval(0.3, 0.7, curve: Curves.easeOut),
       ),
     );
-    _featuresSlide = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _contentController,
-        curve: const Interval(0.3, 0.7, curve: Curves.easeOutCubic),
-      ),
-    );
+    _featuresSlide =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _contentController,
+            curve: const Interval(0.3, 0.7, curve: Curves.easeOutCubic),
+          ),
+        );
     _bottomOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _contentController,
@@ -139,19 +136,24 @@ class _SplashScreenState extends State<SplashScreen>
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 600),
         pageBuilder: (context, animation, secondaryAnimation) =>
-            OnboardingScreen(onComplete: () {
-          Navigator.of(context).pushReplacement(
-            PageRouteBuilder(
-              transitionDuration: const Duration(milliseconds: 500),
-              pageBuilder: (context, animation, secondaryAnimation) =>
-                  const RootShell(),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                return FadeTransition(opacity: animation, child: child);
+            OnboardingScreen(
+              onComplete: () {
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 500),
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        const RootShell(),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          );
+                        },
+                  ),
+                );
               },
             ),
-          );
-        }),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -170,20 +172,8 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1C1C1E),
-              Color(0xFF2C2C2E),
-              Color(0xFF1C1C1E),
-            ],
-          ),
-        ),
+      backgroundColor: Colors.transparent,
+      body: PatternBackdrop(
         child: SafeArea(
           child: Column(
             children: [
@@ -202,53 +192,48 @@ class _SplashScreenState extends State<SplashScreen>
                   );
                 },
                 child: Container(
-                  width: 140,
-                  height: 140,
+                  width: 96,
+                  height: 96,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(32),
-                    boxShadow: [
-                      BoxShadow(
-                        color:
-                            const Color(0xFFFF9500).withValues(alpha: 0.3),
-                        blurRadius: 40,
-                        spreadRadius: 5,
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.borderC(context),
+                      width: 1,
+                    ),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(32),
+                    borderRadius: BorderRadius.circular(19),
                     child: Image.asset('assets/logo.png', fit: BoxFit.cover),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 32),
 
               // ── App name & tagline ──
               SlideTransition(
                 position: _contentSlide,
                 child: FadeTransition(
                   opacity: _contentOpacity,
-                  child: const Column(
+                  child: Column(
                     children: [
                       Text(
-                        'দৌলতপাড়া',
+                        'AL ISLAH',
                         style: TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: 1,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimaryC(context),
+                          letterSpacing: 2.0,
                         ),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Text(
-                        'স্বচ্ছ গ্রাম তহবিল ও উন্নয়ন অংশগ্রহণ',
+                        'Juba Forum Community Platform',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
+                          color: AppColors.textTertiaryC(context),
                           fontWeight: FontWeight.w400,
-                          color: Color(0xFFFF9500),
-                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
@@ -256,7 +241,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 48),
 
               // ── Feature highlights ──
               SlideTransition(
@@ -271,17 +256,17 @@ class _SplashScreenState extends State<SplashScreen>
                           icon: Icons.account_balance_wallet_outlined,
                           text: 'গ্রামের তহবিল ব্যবস্থাপনা',
                         ),
-                        SizedBox(height: 14),
+                        SizedBox(height: 16),
                         _FeatureRow(
                           icon: Icons.construction_outlined,
                           text: 'উন্নয়ন প্রকল্প পর্যবেক্ষণ',
                         ),
-                        SizedBox(height: 14),
+                        SizedBox(height: 16),
                         _FeatureRow(
                           icon: Icons.people_outline,
                           text: 'জনগণের অংশগ্রহণ ও স্বচ্ছতা',
                         ),
-                        SizedBox(height: 14),
+                        SizedBox(height: 16),
                         _FeatureRow(
                           icon: Icons.report_problem_outlined,
                           text: 'সমস্যা রিপোর্ট ও সমাধান',
@@ -297,24 +282,25 @@ class _SplashScreenState extends State<SplashScreen>
               // ── Bottom text ──
               FadeTransition(
                 opacity: _bottomOpacity,
-                child: const Padding(
-                  padding: EdgeInsets.only(bottom: 30),
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 32),
                   child: Column(
                     children: [
                       Text(
-                        'সবার জন্য, সবার দ্বারা',
+                        'For Everyone, By Everyone',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFFFF9500),
+                          color: AppColors.primaryC(context),
+                          letterSpacing: 0.3,
                         ),
                       ),
                       SizedBox(height: 6),
                       Text(
-                        'দৌলতপাড়া গ্রামের ডিজিটাল প্ল্যাটফর্ম',
+                        'AL ISLAH Juba Community Platform',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF8E8E93),
+                          color: AppColors.textTertiaryC(context),
                         ),
                       ),
                     ],
@@ -340,22 +326,22 @@ class _FeatureRow extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 40,
-          height: 40,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
-            color: const Color(0xFFFF9500).withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
+            color: AppColors.primaryMutedC(context),
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: const Color(0xFFFF9500), size: 20),
+          child: Icon(icon, color: AppColors.primaryC(context), size: 18),
         ),
         const SizedBox(width: 14),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
+              color: AppColors.textPrimaryC(context),
               fontWeight: FontWeight.w500,
-              color: Colors.white70,
             ),
           ),
         ),

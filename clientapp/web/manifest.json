@@ -1,11 +1,11 @@
 {
-    "name": "Doulatpara",
-    "short_name": "Doulatpara",
+    "name": "AL ISLAH",
+    "short_name": "AL ISLAH",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Doulatpara community app.",
+    "description": "AL ISLAH community app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

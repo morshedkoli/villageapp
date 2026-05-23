@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'dart:convert';
 
+import 'package:http/http.dart' as http;
+import 'package:crypto/crypto.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -22,10 +25,41 @@ class DataService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
+  // ─── Stream caches (shared across widgets) ────────────────────────
+  BehaviorSubject<VillageOverview>? _villageOverviewCache;
+  BehaviorSubject<List<Donation>>? _donationsCache;
+  BehaviorSubject<List<Donation>>? _donations8Cache;
+  BehaviorSubject<List<ProblemReport>>? _problemsCache;
+  BehaviorSubject<List<ProblemReport>>? _problems8Cache;
+  BehaviorSubject<List<DevelopmentProject>>? _projectsCache;
+  BehaviorSubject<List<DevelopmentProject>>? _projects8Cache;
+  BehaviorSubject<List<Citizen>>? _citizensCache;
+
+  /// Clears all cached streams (e.g. on sign-out or hot-restart).
+  void clearStreamCaches() {
+    _villageOverviewCache?.close();
+    _villageOverviewCache = null;
+    _donationsCache?.close();
+    _donationsCache = null;
+    _donations8Cache?.close();
+    _donations8Cache = null;
+    _problemsCache?.close();
+    _problemsCache = null;
+    _problems8Cache?.close();
+    _problems8Cache = null;
+    _projectsCache?.close();
+    _projectsCache = null;
+    _projects8Cache?.close();
+    _projects8Cache = null;
+    _citizensCache?.close();
+    _citizensCache = null;
+  }
+
   User? get currentUser => _auth.currentUser;
   Stream<User?> authState() => _auth.authStateChanges();
 
   Future<void> signOut() async {
+    clearStreamCaches();
     await _googleSignIn.signOut();
     await _auth.signOut();
   }
@@ -70,26 +104,39 @@ class DataService {
     }
   }
 
-  /// Wraps a Firestore stream with error handling for web platform issues.
+  /// Wraps a Firestore stream with error handling for platform issues.
   /// Returns the last known value on transient errors instead of breaking the stream.
-  Stream<T> _handleStreamErrors<T>(Stream<T> source, T fallback) {
+  Stream<T> _handleStreamErrors<T>(Stream<T> source, T fallback, [String label = '']) {
     return source.handleError(
       (error, stackTrace) {
-        debugPrint('DataService: Stream error - $error');
-        // On web, Firestore can throw internal assertion errors during refresh.
-        // Log the error but don't break the stream - return fallback value.
+        debugPrint('DataService [$label]: Stream error (handled) - $error');
+        // Firestore can throw internal errors on both web and mobile.
+        // Log the error but don't break the stream.
       },
       test: (error) {
-        // Handle Firestore internal errors gracefully
+        // Handle all Firestore / platform internal errors gracefully
+        // so streams keep alive on Android & web.
         final errorStr = error.toString();
-        return errorStr.contains('INTERNAL ASSERTION FAILED') ||
-            errorStr.contains('Unexpected state');
+        final isKnown = errorStr.contains('INTERNAL ASSERTION FAILED') ||
+            errorStr.contains('Unexpected state') ||
+            errorStr.contains('PERMISSION_DENIED') ||
+            errorStr.contains('UNAVAILABLE') ||
+            errorStr.contains('FAILED_PRECONDITION') ||
+            errorStr.contains('NOT_FOUND') ||
+            errorStr.contains('IndexNotReady') ||
+            errorStr.contains('requires an index');
+        if (isKnown) {
+          debugPrint('DataService [$label]: Suppressed known error: $errorStr');
+        }
+        return isKnown;
       },
-    );
+    ).onErrorReturn(fallback);
   }
 
   Stream<VillageOverview> villageOverview() {
-    return _handleStreamErrors(
+    if (_villageOverviewCache != null) return _villageOverviewCache!.stream;
+    _villageOverviewCache = BehaviorSubject<VillageOverview>();
+    _handleStreamErrors(
       _firestore
           .collection('villages')
           .doc(villageDocId)
@@ -103,11 +150,38 @@ class DataService {
         totalFundCollected: 0,
         totalSpent: 0,
       ),
+      'villageOverview',
+    ).listen(
+      (data) => _villageOverviewCache?.add(data),
+      onError: (e) => debugPrint('DataService [villageOverview]: cache error $e'),
     );
+    return _villageOverviewCache!.stream;
   }
 
   Stream<List<Donation>> donations({int limit = 100}) {
-    return _handleStreamErrors(
+    // Use separate caches for limit=8 (home preview) and full list
+    if (limit <= 8) {
+      if (_donations8Cache != null) return _donations8Cache!.stream;
+      _donations8Cache = BehaviorSubject<List<Donation>>();
+      _handleStreamErrors(
+        _firestore
+            .collection('donations')
+            .where('status', isEqualTo: 'Approved')
+            .orderBy('createdAt', descending: true)
+            .limit(limit)
+            .snapshots()
+            .map((snap) => snap.docs.map(Donation.fromDoc).toList()),
+        const <Donation>[],
+        'donations(limit:$limit)',
+      ).listen(
+        (data) => _donations8Cache?.add(data),
+        onError: (e) => debugPrint('DataService [donations8]: cache error $e'),
+      );
+      return _donations8Cache!.stream;
+    }
+    if (_donationsCache != null) return _donationsCache!.stream;
+    _donationsCache = BehaviorSubject<List<Donation>>();
+    _handleStreamErrors(
       _firestore
           .collection('donations')
           .where('status', isEqualTo: 'Approved')
@@ -116,7 +190,12 @@ class DataService {
           .snapshots()
           .map((snap) => snap.docs.map(Donation.fromDoc).toList()),
       const <Donation>[],
+      'donations(limit:$limit)',
+    ).listen(
+      (data) => _donationsCache?.add(data),
+      onError: (e) => debugPrint('DataService [donations]: cache error $e'),
     );
+    return _donationsCache!.stream;
   }
 
   Stream<List<Donation>> pendingDonations() {
@@ -141,23 +220,15 @@ class DataService {
         final data = doc.data() ?? {};
         final raw = data['paymentAccounts'];
         
-        debugPrint('=== PAYMENT ACCOUNTS STREAM DEBUG ===');
-        debugPrint('Raw paymentAccounts data: $raw');
-        debugPrint('Data type: ${raw.runtimeType}');
-        
         final result = <String, Map<String, String>>{};
 
         // Handle array format (from web admin panel)
         if (raw is List) {
-          debugPrint('Processing as List (${raw.length} items)');
           for (final item in raw) {
             if (item is Map) {
               final rawType = (item['type'] ?? '').toString();
-              debugPrint('  Item type: $rawType, number: ${item['number']}, name: ${item['name']}');
               if (rawType.isNotEmpty) {
-                // Normalize type to match mobile app keys (bkash -> bKash, etc.)
                 final type = _normalizePaymentType(rawType);
-                debugPrint('  Normalized type: $rawType -> $type');
                 final m = <String, String>{
                   'number': (item['number'] ?? '').toString(),
                   'name': (item['name'] ?? '').toString(),
@@ -168,12 +239,10 @@ class DataService {
               }
             }
           }
-          debugPrint('Result from List: $result');
           return result;
         }
 
         // Handle legacy map format
-        debugPrint('Processing as Map');
         final accounts = raw as Map<String, dynamic>? ?? {};
         return accounts.map((k, v) {
           final normalizedKey = _normalizePaymentType(k);
@@ -306,40 +375,90 @@ class DataService {
   }
 
   Stream<List<ProblemReport>> problems({int limit = 100}) {
-    // Query for both Approved and Completed problems
-    // Using whereIn requires special indexing, so we filter client-side for now
-    return _firestore
-        .collection('problems')
-        .orderBy('createdAt', descending: true)
-        .limit(limit * 2) // Fetch more to account for filtering
-        .snapshots()
-        .map((snap) {
-          final docs = snap.docs.map(ProblemReport.fromDoc).toList();
-          // Filter to only show Approved and Completed
-          return docs
-              .where((p) => p.status == 'Approved' || p.status == 'Completed')
-              .take(limit)
-              .toList();
-        });
+    if (limit <= 8) {
+      if (_problems8Cache != null) return _problems8Cache!.stream;
+      _problems8Cache = BehaviorSubject<List<ProblemReport>>();
+      _handleStreamErrors(
+        _firestore
+            .collection('problems')
+            .orderBy('createdAt', descending: true)
+            .limit(limit)
+            .snapshots()
+            .map((snap) => snap.docs.map(ProblemReport.fromDoc).toList()),
+        const <ProblemReport>[],
+        'problems(limit:$limit)',
+      ).listen(
+        (data) => _problems8Cache?.add(data),
+        onError: (e) => debugPrint('DataService [problems8]: cache error $e'),
+      );
+      return _problems8Cache!.stream;
+    }
+    if (_problemsCache != null) return _problemsCache!.stream;
+    _problemsCache = BehaviorSubject<List<ProblemReport>>();
+    _handleStreamErrors(
+      _firestore
+          .collection('problems')
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .snapshots()
+          .map((snap) => snap.docs.map(ProblemReport.fromDoc).toList()),
+      const <ProblemReport>[],
+      'problems(limit:$limit)',
+    ).listen(
+      (data) => _problemsCache?.add(data),
+      onError: (e) => debugPrint('DataService [problems]: cache error $e'),
+    );
+    return _problemsCache!.stream;
   }
 
   Stream<List<DevelopmentProject>> projects({int limit = 100}) {
-    return _firestore
-        .collection('projects')
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snap) => snap.docs.map(DevelopmentProject.fromDoc).toList());
+    if (limit <= 8) {
+      if (_projects8Cache != null) return _projects8Cache!.stream;
+      _projects8Cache = BehaviorSubject<List<DevelopmentProject>>();
+      _handleStreamErrors(
+        _firestore
+            .collection('projects')
+            .orderBy('createdAt', descending: true)
+            .limit(limit)
+            .snapshots()
+            .map((snap) => snap.docs.map(DevelopmentProject.fromDoc).toList()),
+        const <DevelopmentProject>[],
+        'projects(limit:$limit)',
+      ).listen(
+        (data) => _projects8Cache?.add(data),
+        onError: (e) => debugPrint('DataService [projects8]: cache error $e'),
+      );
+      return _projects8Cache!.stream;
+    }
+    if (_projectsCache != null) return _projectsCache!.stream;
+    _projectsCache = BehaviorSubject<List<DevelopmentProject>>();
+    _handleStreamErrors(
+      _firestore
+          .collection('projects')
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .snapshots()
+          .map((snap) => snap.docs.map(DevelopmentProject.fromDoc).toList()),
+      const <DevelopmentProject>[],
+      'projects(limit:$limit)',
+    ).listen(
+      (data) => _projectsCache?.add(data),
+      onError: (e) => debugPrint('DataService [projects]: cache error $e'),
+    );
+    return _projectsCache!.stream;
   }
 
   Stream<List<Citizen>> citizens() {
-    // Query all users and filter client-side for isCitizen == true
+    if (_citizensCache != null) return _citizensCache!.stream;
+    _citizensCache = BehaviorSubject<List<Citizen>>();
+
+    // Filter server-side for isCitizen == true when possible
     final usersStream = _firestore
         .collection('users')
+        .where('isCitizen', isEqualTo: true)
         .snapshots()
         .map(
           (snap) => snap.docs
-              .where((doc) => doc.data()['isCitizen'] == true)
               .map((doc) => _citizenFromMap(doc.id, doc.data()))
               .toList(),
         )
@@ -355,7 +474,7 @@ class DataService {
         )
         .onErrorReturn(const <Citizen>[]);
 
-    return CombineLatestStream.combine2(
+    CombineLatestStream.combine2(
       usersStream,
       legacyCitizensStream,
       (List<Citizen> users, List<Citizen> legacyCitizens) {
@@ -370,7 +489,11 @@ class DataService {
           ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
         return list;
       },
+    ).listen(
+      (data) => _citizensCache?.add(data),
+      onError: (e) => debugPrint('DataService [citizens]: cache error $e'),
     );
+    return _citizensCache!.stream;
   }
 
   /// Returns a real-time count of registered citizens across users and citizens collections.
@@ -430,12 +553,15 @@ class DataService {
   }
 
   Stream<List<AppNotification>> notifications({int limit = 100}) {
-    return _firestore
-        .collection('notifications')
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snap) => snap.docs.map(AppNotification.fromDoc).toList());
+    return _handleStreamErrors(
+      _firestore
+          .collection('notifications')
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .snapshots()
+          .map((snap) => snap.docs.map(AppNotification.fromDoc).toList()),
+      const <AppNotification>[],
+    ).asBroadcastStream();
   }
 
   Stream<Set<String>> myReadNotificationIds() {
@@ -465,7 +591,7 @@ class DataService {
       (List<AppNotification> notifications, Set<String> readIds) {
         return notifications.where((n) => !readIds.contains(n.id)).length;
       },
-    );
+    ).asBroadcastStream();
   }
 
   Future<void> markNotificationRead(String notificationId) async {
@@ -584,14 +710,9 @@ class DataService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      tx.set(_firestore.collection('notifications').doc(), {
-        'title': 'নতুন অনুদান',
-        'body': '$donorName ৳$amount অনুদান দিয়েছেন',
-        'type': 'donation',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      // Notification is sent by Cloud Function onDonationApprovedNotifyAll
+      // when the status changes to 'Approved'.
     });
-
   }
 
   Future<void> rejectDonation(String donationId) async {
@@ -637,31 +758,38 @@ class DataService {
         throw StateError('Image size too large. Please select an image smaller than 5MB.');
       }
       
-      final base64Image = base64Encode(bytes);
-      
-      // Get API key from environment (should be set up securely)
-      const imgbbApiKey = String.fromEnvironment('IMGBB_API_KEY', defaultValue: '');
-      if (imgbbApiKey.isEmpty) {
+      // Get Cloudinary config from environment (must be set at build time via --dart-define)
+      const cloudName = String.fromEnvironment('CLOUDINARY_CLOUD_NAME');
+      const apiKey = String.fromEnvironment('CLOUDINARY_API_KEY');
+      const apiSecret = String.fromEnvironment('CLOUDINARY_API_SECRET');
+
+      if (cloudName.isEmpty || apiKey.isEmpty || apiSecret.isEmpty) {
         throw StateError('Image upload is not configured. Please contact administrator or submit without photo.');
       }
       
       try {
-        final httpClient = HttpClient()..connectionTimeout = const Duration(seconds: 30);
-        final request = await httpClient.postUrl(
-          Uri.parse('https://api.imgbb.com/1/upload?key=$imgbbApiKey'),
-        );
-        request.headers.contentType = ContentType('application', 'x-www-form-urlencoded');
-        request.write('image=${Uri.encodeComponent(base64Image)}');
-        final res = await request.close().timeout(const Duration(seconds: 60));
+        final timestamp = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+        // Signature = SHA1("timestamp=$timestamp$apiSecret")
+        final strToSign = 'timestamp=$timestamp$apiSecret';
+        final signature = sha1.convert(utf8.encode(strToSign)).toString();
+
+        final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
+        final request = http.MultipartRequest('POST', uri)
+          ..fields['api_key'] = apiKey
+          ..fields['timestamp'] = timestamp
+          ..fields['signature'] = signature
+          ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: 'upload.jpg'));
+
+        final response = await request.send().timeout(const Duration(seconds: 60));
+        final resBody = await response.stream.bytesToString();
         
-        if (res.statusCode != 200) {
-          throw StateError('Image upload failed with status ${res.statusCode}');
+        if (response.statusCode != 200) {
+          throw StateError('Image upload failed with status ${response.statusCode}');
         }
         
-        final resBody = await res.transform(utf8.decoder).join();
         final json = jsonDecode(resBody);
-        if (json['success'] == true) {
-          photoUrl = json['data']['url'];
+        if (json['secure_url'] != null) {
+          photoUrl = json['secure_url'];
         } else {
           final errorMsg = json['error']?['message'] ?? 'Unknown error';
           throw StateError('Image upload failed: $errorMsg');
@@ -691,25 +819,12 @@ class DataService {
 
   /// Admin approves a pending problem, making it visible to all citizens.
   Future<void> approveProblem(String problemId) async {
-    final problemDoc = await _firestore.collection('problems').doc(problemId).get();
-    final data = problemDoc.data();
-    if (data == null) throw StateError('Problem not found.');
-
-    final title = data['title'] as String? ?? 'Untitled';
-    final reporterName = data['reportedByName'] as String? ?? 'Citizen';
-
     await _firestore.collection('problems').doc(problemId).update({
       'status': 'Approved',
     });
 
-    // Now send notification since problem is visible
-    await _firestore.collection('notifications').add({
-      'title': 'নতুন সমস্যা রিপোর্ট',
-      'body': '$reporterName "$title" সমস্যা রিপোর্ট করেছেন',
-      'type': 'problem',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
+    // Notification is sent by Cloud Function onProblemApprovedNotifyAll
+    // when the status changes to 'Approved'.
   }
 
   /// Admin rejects a pending problem.
@@ -726,38 +841,47 @@ class DataService {
 
   /// Get all pending problems (for admin review).
   Stream<List<ProblemReport>> pendingProblems() {
-    return _firestore
-        .collection('problems')
-        .where('status', isEqualTo: 'Pending')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs.map(ProblemReport.fromDoc).toList());
+    return _handleStreamErrors(
+      _firestore
+          .collection('problems')
+          .where('status', isEqualTo: 'Pending')
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((snap) => snap.docs.map(ProblemReport.fromDoc).toList()),
+      const <ProblemReport>[],
+    );
   }
 
   Stream<List<Donation>> myDonations() {
     final user = _auth.currentUser;
     if (user == null) {
-      return const Stream<List<Donation>>.empty();
+      return Stream<List<Donation>>.value(const <Donation>[]);
     }
-    return _firestore
-        .collection('donations')
-        .where('userId', isEqualTo: user.uid)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs.map(Donation.fromDoc).toList());
+    return _handleStreamErrors(
+      _firestore
+          .collection('donations')
+          .where('userId', isEqualTo: user.uid)
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((snap) => snap.docs.map(Donation.fromDoc).toList()),
+      const <Donation>[],
+    );
   }
 
   Stream<List<ProblemReport>> myProblems() {
     final user = _auth.currentUser;
     if (user == null) {
-      return const Stream<List<ProblemReport>>.empty();
+      return Stream<List<ProblemReport>>.value(const <ProblemReport>[]);
     }
-    return _firestore
-        .collection('problems')
-        .where('reportedBy', isEqualTo: user.uid)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs.map(ProblemReport.fromDoc).toList());
+    return _handleStreamErrors(
+      _firestore
+          .collection('problems')
+          .where('reportedBy', isEqualTo: user.uid)
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((snap) => snap.docs.map(ProblemReport.fromDoc).toList()),
+      const <ProblemReport>[],
+    );
   }
 
   // ─── Problem Voting ─────────────────────────────────────────────────
@@ -863,23 +987,12 @@ class DataService {
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
-    // Notify all users about the new citizen.
+    // Increment citizen counter for new users.
+    // Notification is sent by Cloud Function onCitizenRegisteredNotifyAll.
     if (isNew) {
-      final displayName =
-          user.displayName ?? user.email?.split('@').first ?? 'Citizen';
-
-      // Increment totalCitizens counter on the village document.
       await _firestore.collection('villages').doc(villageDocId).set({
         'totalCitizens': FieldValue.increment(1),
       }, SetOptions(merge: true));
-
-      await _firestore.collection('notifications').add({
-        'title': 'নতুন নাগরিক যোগ হয়েছে',
-        'body': '$displayName গ্রামে যোগদান করেছেন',
-        'type': 'citizen',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
     }
 
     return isNew;
@@ -1007,7 +1120,6 @@ class DataService {
           .snapshots()) {
         
         if (!snap.exists) {
-          debugPrint('Payment methods document does not exist, using defaults');
           yield _getDefaultPaymentMethods();
           continue;
         }
@@ -1015,11 +1127,7 @@ class DataService {
         final data = snap.data() ?? {};
         final methods = data['methods'] as List<dynamic>? ?? [];
         
-        debugPrint('Payment methods from Firestore: ${methods.length} items, data: $methods');
-        
         if (methods.isEmpty) {
-          // Return default methods if not configured
-          debugPrint('Payment methods array is empty, using defaults');
           yield _getDefaultPaymentMethods();
           continue;
         }
@@ -1031,11 +1139,10 @@ class DataService {
           return <String, dynamic>{};
         }).toList();
         
-        debugPrint('Returning ${result.length} payment methods from Firestore');
         yield result;
       }
     } catch (error) {
-      debugPrint('Error in paymentMethods stream: $error, returning defaults');
+      debugPrint('Error in paymentMethods stream: $error');
       yield _getDefaultPaymentMethods();
     }
   }
@@ -1082,10 +1189,24 @@ class DataService {
 
   /// Returns a stream of the count of pending/unresolved problems.
   Stream<int> pendingProblemsCount() {
-    return _firestore
-        .collection('problems')
-        .where('status', isEqualTo: 'Pending')
-        .snapshots()
-        .map((snap) => snap.size);
+    return _handleStreamErrors(
+      _firestore
+          .collection('problems')
+          .where('status', isEqualTo: 'Pending')
+          .snapshots()
+          .map((snap) => snap.size),
+      0,
+    );
+  }
+
+  /// Returns a stream of the total number of development projects.
+  Stream<int> projectsCount() {
+    return _handleStreamErrors(
+      _firestore
+          .collection('projects')
+          .snapshots()
+          .map((snap) => snap.size),
+      0,
+    );
   }
 }

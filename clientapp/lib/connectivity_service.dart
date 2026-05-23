@@ -23,7 +23,6 @@ class ConnectivityService extends ValueNotifier<bool> {
       final online = _hasConnection(results);
       if (value != online) {
         value = online;
-        debugPrint('ConnectivityService: ${online ? "ONLINE" : "OFFLINE"}');
       }
     });
   }

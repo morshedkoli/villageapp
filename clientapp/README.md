@@ -44,6 +44,7 @@ flutterfire configure
    - Authentication > Email link sign-in
    - Firestore
    - Storage
+   - Cloud Functions for push notification fanout. Firebase Blaze plan is required for this.
 5. Deploy rules:
 
 ```bash

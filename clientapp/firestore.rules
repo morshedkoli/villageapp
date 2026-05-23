@@ -25,6 +25,13 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Legacy citizen profiles used by older admin panels.
+    // Public read keeps the Citizens screen available without login.
+    match /citizens/{citizenId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     match /users/{userId}/notification_reads/{notificationId} {
       allow read: if isOwner(userId);
       allow create, update: if isOwner(userId) &&
@@ -46,7 +53,7 @@ service cloud.firestore {
 
     match /fund_transactions/{transactionId} {
       allow read: if true;
-      allow create: if isSignedIn();
+      allow create: if isAdmin();
       allow update, delete: if isAdmin();
     }
 
@@ -76,6 +83,13 @@ service cloud.firestore {
         allow read: if true;
         allow create, update, delete: if isSignedIn() && voterId == request.auth.uid;
       }
+    }
+
+    // Application configuration (e.g., payment methods)
+    // Public read so donation info is visible without login.
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
   }

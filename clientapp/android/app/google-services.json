@@ -1,42 +1,42 @@
 {
   "project_info": {
-    "project_number": "672769898353",
-    "project_id": "village-1727b",
-    "storage_bucket": "village-1727b.firebasestorage.app"
+    "project_number": "1064035305311",
+    "firebase_url": "https://village-1a6d9-default-rtdb.firebaseio.com",
+    "project_id": "village-1a6d9",
+    "storage_bucket": "village-1a6d9.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:672769898353:android:9ad26ddb779dac375b28d0",
+        "mobilesdk_app_id": "1:1064035305311:android:c10112206706a9fa63d8ea",
         "android_client_info": {
-          "package_name": "com.example.doulatpara"
+          "package_name": "com.murshedkoli.alislah"
         }
       },
       "oauth_client": [
         {
-          "client_id": "672769898353-ed67804mprcm5h6pmf18capu4qvbad4e.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.doulatpara",
-            "certificate_hash": "d10540a9db30888c05b39e9d7c04374dcdac59ad"
-          }
-        },
-        {
-          "client_id": "672769898353-v2e8tn8k6vfkcd0pk9sffbs6r8elb95e.apps.googleusercontent.com",
+          "client_id": "1064035305311-2ovc90ovj0ujdslrgpot09id15uhuho7.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCj3zqf8gRBkqeLCgqxQMDvDqVRDtPL0O0"
+          "current_key": "AIzaSyA_YhdEw1MmyKQ-KJ18iwIB_ik9qvj28n4"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "672769898353-v2e8tn8k6vfkcd0pk9sffbs6r8elb95e.apps.googleusercontent.com",
+              "client_id": "1064035305311-2ovc90ovj0ujdslrgpot09id15uhuho7.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "1064035305311-butpt20t9rvr9dej02dfr3hjmttqg87q.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.clientapp"
+              }
             }
           ]
         }

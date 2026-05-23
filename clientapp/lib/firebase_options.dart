@@ -44,37 +44,37 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAyFEl4iwLL9m7eBcKsRIuH-eEQT93Mn6s',
-    appId: '1:672769898353:web:985e756ddcdd65c05b28d0',
-    messagingSenderId: '672769898353',
-    projectId: 'village-1727b',
-    authDomain: 'village-1727b.firebaseapp.com',
-    storageBucket: 'village-1727b.firebasestorage.app',
+    apiKey: 'AIzaSyA_YhdEw1MmyKQ-KJ18iwIB_ik9qvj28n4',
+    appId: '1:1064035305311:web:46750e29f45ef90863d8ea',
+    messagingSenderId: '1064035305311',
+    projectId: 'village-1a6d9',
+    authDomain: 'village-1a6d9.firebaseapp.com',
+    storageBucket: 'village-1a6d9.firebasestorage.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAyFEl4iwLL9m7eBcKsRIuH-eEQT93Mn6s',
-    appId: '1:672769898353:web:985e756ddcdd65c05b28d0',
-    messagingSenderId: '672769898353',
-    projectId: 'village-1727b',
-    authDomain: 'village-1727b.firebaseapp.com',
-    storageBucket: 'village-1727b.firebasestorage.app',
+    apiKey: 'AIzaSyA_YhdEw1MmyKQ-KJ18iwIB_ik9qvj28n4',
+    appId: '1:1064035305311:web:94b23aa6da6be03a63d8ea',
+    messagingSenderId: '1064035305311',
+    projectId: 'village-1a6d9',
+    authDomain: 'village-1a6d9.firebaseapp.com',
+    storageBucket: 'village-1a6d9.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCj3zqf8gRBkqeLCgqxQMDvDqVRDtPL0O0',
-    appId: '1:672769898353:android:9ad26ddb779dac375b28d0',
-    messagingSenderId: '672769898353',
-    projectId: 'village-1727b',
-    storageBucket: 'village-1727b.firebasestorage.app',
+    apiKey: 'AIzaSyA_YhdEw1MmyKQ-KJ18iwIB_ik9qvj28n4',
+    appId: '1:1064035305311:android:c10112206706a9fa63d8ea',
+    messagingSenderId: '1064035305311',
+    projectId: 'village-1a6d9',
+    storageBucket: 'village-1a6d9.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCpeEaePuHuwKg0f0Oph8rkH5D-52zf4rI',
+    apiKey: 'AIzaSyA_YhdEw1MmyKQ-KJ18iwIB_ik9qvj28n4',
     appId: '1:1064035305311:ios:7f7065ad245a74f563d8ea',
-    messagingSenderId: '672769898353',
-    projectId: 'village-1727b',
-    storageBucket: 'village-1727b.firebasestorage.app',
+    messagingSenderId: '1064035305311',
+    projectId: 'village-1a6d9',
+    storageBucket: 'village-1a6d9.firebasestorage.app',
     iosBundleId: 'com.example.doulatpara',
   );
 
