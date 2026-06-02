@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:animate_do/animate_do.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +15,7 @@ import 'push_notification_service.dart';
 import 'ui/accessibility.dart';
 import 'ui/components.dart';
 import 'ui/design_system.dart';
+import 'ui/motion.dart';
 
 
 part 'screens/common.dart';

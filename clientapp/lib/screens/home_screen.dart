@@ -1,5 +1,18 @@
 part of '../screens.dart';
 
+/// Home screen — production-polished, minimal copy, animated.
+///
+/// Layout philosophy:
+///   • Numbers and icons over paragraphs
+///   • Single hero metric (available balance) with secondary line
+///   • Quick actions as 2-up chips with concise verbs
+///   • Stat grid: 4 numbers, no labels-as-sentences
+///   • Sectioned scroll: Donations → Problems → Projects, each compact
+///
+/// Motion:
+///   • Staggered entrance via [StaggeredColumn]
+///   • Animated stat counts via [AnimatedCount]
+///   • Pull-to-refresh with adequate haptic on success
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -7,70 +20,37 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = DataService.instance;
     final pad = _pagePadding(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final contentWidth = screenWidth >= 640 ? 560.0 : screenWidth;
-    final actionWidth = ((contentWidth - (pad.left * 2) - 12) / 2)
-        .clamp(136.0, 220.0)
-        .toDouble();
+
     return StreamBuilder<VillageOverview>(
       stream: data.villageOverview(),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
-          return Padding(
-            padding: _pagePadding(context),
-            child: const ListSkeleton(itemCount: 4, itemHeight: 120),
-          );
+          return const _HomeSkeleton();
         }
         if (snap.hasError && !snap.hasData) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.cloud_off_rounded,
-                    size: 48,
-                    color: AppColors.textSecondaryC(context),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    tr('Could not load data', 'ডেটা লোড করা যায়নি'),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimaryC(context),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    tr('Pull down to retry', 'রিফ্রেশ করতে টানুন'),
-                    style: TextStyle(
-                      color: AppColors.textSecondaryC(context),
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+          return _HomeErrorState();
         }
-        final overview =
-            snap.data ??
+
+        final overview = snap.data ??
             const VillageOverview(
               name: 'Our Village',
               totalCitizens: 0,
               totalFundCollected: 0,
               totalSpent: 0,
             );
+
         return RefreshIndicator(
           color: AppColors.primaryC(context),
+          backgroundColor: AppColors.surfaceC(context),
           onRefresh: () async {
+            Haptics.tap();
             await Future.wait([
               data.villageOverview().first,
               data.donations(limit: 8).first,
               data.problems(limit: 8).first,
               data.projects(limit: 8).first,
             ]);
+            Haptics.confirm();
           },
           child: _constrainBodyWidth(
             context,
@@ -78,317 +58,536 @@ class HomeScreen extends StatelessWidget {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.only(bottom: 24),
               children: [
-                FadeInDown(
-                  duration: const Duration(milliseconds: 500),
-                  child: _AppHeader(
-                    showMenuButton: !_useDesktopSidebar(context),
-                    actions: [
-                      _HeaderActionButton(
-                        icon: Icons.search_rounded,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const CitizensPage(),
-                          ),
-                        ),
+                // Header (greeting + actions)
+                _AppHeader(
+                  showMenuButton: !_useDesktopSidebar(context),
+                  actions: [
+                    _HeaderActionButton(
+                      icon: Icons.search_rounded,
+                      onTap: () => Navigator.of(context).push(
+                        FadeThroughPageRoute(page: const CitizensPage()),
                       ),
-                      const SizedBox(width: 8),
-                      const _NotificationButton(),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    const _NotificationButton(),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
 
-                // ── Hero banner ──
-                FadeInUp(
-                  duration: const Duration(milliseconds: 600),
+                // Hero balance card
+                FadeSlideIn(
+                  duration: const Duration(milliseconds: 380),
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: pad.left),
                     child: StreamBuilder<int>(
                       stream: data.citizenCount(),
                       builder: (context, citizenSnap) {
-                        final citizenCount =
-                            citizenSnap.data ?? overview.totalCitizens;
                         return _HeroCard(
                           title: overview.name,
                           balance: currency.format(overview.availableBalance),
                           expense: currency.format(overview.totalSpent),
-                          citizens: citizenCount,
+                          citizens: citizenSnap.data ?? overview.totalCitizens,
                         );
                       },
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
-                FadeInUp(
-                  delay: const Duration(milliseconds: 100),
-                  duration: const Duration(milliseconds: 600),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: pad.left),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariantC(context),
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.campaign_outlined,
-                            color: AppColors.textSecondaryC(context),
-                            size: 16,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              tr(
-                                'Important community updates appear at the top of each section.',
-                                'গুরুত্বপূর্ণ কমিউনিটি আপডেট প্রতিটি সেকশনের শুরুতে দেখানো হয়।',
-                              ),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondaryC(context),
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                // ── Quick actions ──
-                FadeInUp(
-                  delay: const Duration(milliseconds: 200),
-                  duration: const Duration(milliseconds: 600),
+                // Quick actions row (3-up, no wrap)
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 60),
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: pad.left),
-                    child: Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        SizedBox(
-                          width: actionWidth,
-                          child: _QuickAction(
-                            icon: Icons.volunteer_activism_rounded,
-                            label: tr('Donate', 'অনুদান'),
-                            color: AppColors.primaryC(context),
-                            onTap: () async {
-                              final ok = await _ensureLogin(context);
-                              if (!context.mounted || !ok) return;
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const DonateScreen(),
-                                ),
-                              );
-                            },
-                          ),
+                    child: _QuickActionRow(
+                      actions: [
+                        _QuickActionData(
+                          icon: Icons.volunteer_activism_rounded,
+                          label: tr('Donate', 'অনুদান'),
+                          color: AppColors.primaryC(context),
+                          onTap: () async {
+                            final ok = await _ensureLogin(context);
+                            if (!context.mounted || !ok) return;
+                            Haptics.tap();
+                            Navigator.of(context).push(
+                              FadeThroughPageRoute(page: const DonateScreen()),
+                            );
+                          },
                         ),
-                        SizedBox(
-                          width: actionWidth,
-                          child: _QuickAction(
-                            icon: Icons.people_rounded,
-                            label: tr('Citizens', 'নাগরিক'),
-                            color: AppColors.secondary,
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const CitizensPage(),
-                              ),
-                            ),
-                          ),
+                        _QuickActionData(
+                          icon: Icons.people_alt_rounded,
+                          label: tr('Citizens', 'নাগরিক'),
+                          color: AppColors.infoC(context),
+                          onTap: () {
+                            Haptics.tap();
+                            Navigator.of(context).push(
+                              FadeThroughPageRoute(page: const CitizensPage()),
+                            );
+                          },
                         ),
-                        SizedBox(
-                          width: actionWidth,
-                          child: _QuickAction(
-                            icon: Icons.leaderboard_rounded,
-                            label: tr('Leaders', 'লিডার'),
-                            color: AppColors.successC(context),
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const LeaderboardPage(),
+                        _QuickActionData(
+                          icon: Icons.emoji_events_rounded,
+                          label: tr('Leaders', 'লিডার'),
+                          color: AppColors.warningC(context),
+                          onTap: () {
+                            Haptics.tap();
+                            Navigator.of(context).push(
+                              FadeThroughPageRoute(
+                                page: const LeaderboardPage(),
                               ),
-                            ),
-                          ),
+                            );
+                          },
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 18),
 
-                // ── Stat cards ──
-                FadeInUp(
-                  delay: const Duration(milliseconds: 300),
-                  duration: const Duration(milliseconds: 600),
+                // Stat grid — 4 numbers, animated counts
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 120),
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: pad.left),
-                    child: StreamBuilder<int>(
-                      stream: data.projectsCount(),
-                      builder: (context, projectSnap) {
-                        final projectCount = projectSnap.data ?? 0;
-                        return StreamBuilder<int>(
-                          stream: data.problems().map((list) => list.length),
-                          builder: (context, problemSnap) {
-                            final problemCount = problemSnap.data ?? 0;
-                            return Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: StatCard(
-                                        icon: Icons
-                                            .account_balance_wallet_rounded,
-                                        label: tr('Fund', 'তহবিল'),
-                                        value: currency.format(
-                                          overview.totalFundCollected,
-                                        ),
-                                        gradient: AppColors.primaryGradient,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: StatCard(
-                                        icon: Icons.pie_chart_rounded,
-                                        label: tr('Balance', 'ব্যালেন্স'),
-                                        value: currency.format(
-                                          overview.availableBalance,
-                                        ),
-                                        gradient: AppColors.secondaryGradient,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: StatCard(
-                                        icon: Icons.construction_rounded,
-                                        label: tr('Projects', 'প্রকল্প'),
-                                        value: '$projectCount',
-                                        gradient: AppColors.warningGradient,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: StatCard(
-                                        icon: Icons.warning_amber_rounded,
-                                        label: tr('Problems', 'সমস্যা'),
-                                        value: '$problemCount',
-                                        gradient: AppColors.errorGradient,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
+                    child: _StatGrid(overview: overview),
+                  ),
+                ),
+                const SizedBox(height: 22),
+
+                // Recent Donations
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 180),
+                  child: _Section(
+                    title: tr('Donations', 'অনুদান'),
+                    onSeeAll: () => Navigator.of(context).push(
+                      FadeThroughPageRoute(page: const VillageFundScreen()),
+                    ),
+                    padding: pad.left,
+                    child: StreamBuilder<List<Donation>>(
+                      stream: data.donations(limit: 8),
+                      builder: (context, ds) => _HorizontalDonationList(
+                        items: ds.data ?? const [],
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 22),
-                _SoftSectionDivider(padding: pad.left),
-                const SizedBox(height: 14),
 
-                // ── Recent Donations ──
-                FadeInUp(
-                  delay: const Duration(milliseconds: 400),
-                  duration: const Duration(milliseconds: 600),
-                  child: Column(
-                    children: [
-                      _SectionHeader(
-                        title: tr('Recent Donations', 'সাম্প্রতিক অনুদান'),
-                        onSeeAll: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const VillageFundScreen(),
-                          ),
-                        ),
-                        padding: pad.left,
-                      ),
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: EdgeInsets.only(left: pad.left),
-                        child: StreamBuilder<List<Donation>>(
-                          stream: data.donations(limit: 8),
-                          builder: (context, ds) => _HorizontalDonationList(
-                            items: ds.data ?? const [],
-                          ),
-                        ),
-                      ),
-                    ],
+                // Latest Problems
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 220),
+                  child: _Section(
+                    title: tr('Problems', 'সমস্যা'),
+                    onSeeAll: () => _openRootTab(context, 1),
+                    padding: pad.left,
+                    child: StreamBuilder<List<ProblemReport>>(
+                      stream: data.problems(limit: 8),
+                      builder: (context, ps) =>
+                          _HorizontalProblemList(items: ps.data ?? const []),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 22),
-                _SoftSectionDivider(padding: pad.left),
-                const SizedBox(height: 14),
 
-                // ── Latest Problems ──
-                FadeInUp(
-                  delay: const Duration(milliseconds: 500),
-                  duration: const Duration(milliseconds: 600),
-                  child: Column(
-                    children: [
-                      _SectionHeader(
-                        title: tr('Latest Problems', 'সাম্প্রতিক সমস্যা'),
-                        onSeeAll: () => _openRootTab(context, 1),
-                        padding: pad.left,
-                      ),
-                      const SizedBox(height: 8),
-                      StreamBuilder<List<ProblemReport>>(
-                        stream: data.problems(limit: 8),
-                        builder: (context, ps) {
-                          final items = ps.data ?? const <ProblemReport>[];
-                          return _HorizontalProblemList(items: items);
-                        },
-                      ),
-                    ],
+                // Active Projects
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 260),
+                  child: _Section(
+                    title: tr('Projects', 'প্রকল্প'),
+                    onSeeAll: () => Navigator.of(context).push(
+                      FadeThroughPageRoute(page: const ProjectsScreen()),
+                    ),
+                    padding: pad.left,
+                    child: StreamBuilder<List<DevelopmentProject>>(
+                      stream: data.projects(limit: 8),
+                      builder: (context, pr) {
+                        final items = (pr.data ?? const <DevelopmentProject>[])
+                            .where((e) => e.status != 'Completed')
+                            .toList();
+                        return _HorizontalProjectList(items: items);
+                      },
+                    ),
                   ),
                 ),
-                const SizedBox(height: 22),
-                _SoftSectionDivider(padding: pad.left),
-                const SizedBox(height: 14),
-
-                // ── Active Projects ──
-                FadeInUp(
-                  delay: const Duration(milliseconds: 600),
-                  duration: const Duration(milliseconds: 600),
-                  child: Column(
-                    children: [
-                      _SectionHeader(
-                        title: tr('Active Projects', 'চলমান প্রকল্প'),
-                        onSeeAll: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const ProjectsScreen(),
-                          ),
-                        ),
-                        padding: pad.left,
-                      ),
-                      const SizedBox(height: 8),
-                      StreamBuilder<List<DevelopmentProject>>(
-                        stream: data.projects(limit: 8),
-                        builder: (context, pr) {
-                          final items =
-                              (pr.data ?? const <DevelopmentProject>[])
-                                  .where((e) => e.status != 'Completed')
-                                  .toList();
-                          return _HorizontalProjectList(items: items);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
               ],
             ),
           ),
         );
       },
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Quick Action Row — 3 chips, no labels overflow, square icons
+// ────────────────────────────────────────────────────────────────────────────
+
+class _QuickActionData {
+  const _QuickActionData({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+}
+
+class _QuickActionRow extends StatelessWidget {
+  const _QuickActionRow({required this.actions});
+
+  final List<_QuickActionData> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (var i = 0; i < actions.length; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          Expanded(child: _QuickActionTile(data: actions[i])),
+        ],
+      ],
+    );
+  }
+}
+
+class _QuickActionTile extends StatelessWidget {
+  const _QuickActionTile({required this.data});
+
+  final _QuickActionData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      onTap: data.onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceC(context),
+          borderRadius: BorderRadius.circular(AppRadius.xxl),
+          border: Border.all(color: AppColors.borderC(context), width: 1),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: data.color.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(data.icon, color: data.color, size: 20),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              data.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimaryC(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Stat grid — 4-up with animated counts and icon chips
+// ────────────────────────────────────────────────────────────────────────────
+
+class _StatGrid extends StatelessWidget {
+  const _StatGrid({required this.overview});
+
+  final VillageOverview overview;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = DataService.instance;
+    return StreamBuilder<int>(
+      stream: data.projectsCount(),
+      builder: (context, projectSnap) {
+        return StreamBuilder<int>(
+          stream: data.problems().map((l) => l.length),
+          builder: (context, problemSnap) {
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatTile(
+                        icon: Icons.account_balance_wallet_rounded,
+                        label: tr('Fund', 'তহবিল'),
+                        value: overview.totalFundCollected,
+                        formatter: (v) => currency.format(v),
+                        color: AppColors.primaryC(context),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _StatTile(
+                        icon: Icons.pie_chart_rounded,
+                        label: tr('Balance', 'ব্যালেন্স'),
+                        value: overview.availableBalance,
+                        formatter: (v) => currency.format(v),
+                        color: AppColors.successC(context),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatTile(
+                        icon: Icons.construction_rounded,
+                        label: tr('Projects', 'প্রকল্প'),
+                        value: projectSnap.data ?? 0,
+                        color: AppColors.warningC(context),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _StatTile(
+                        icon: Icons.warning_amber_rounded,
+                        label: tr('Problems', 'সমস্যা'),
+                        value: problemSnap.data ?? 0,
+                        color: AppColors.errorC(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    this.formatter,
+  });
+
+  final IconData icon;
+  final String label;
+  final num value;
+  final Color color;
+  final String Function(num)? formatter;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceC(context),
+        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        border: Border.all(color: AppColors.borderC(context), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(height: 12),
+          AnimatedCount(
+            value: value,
+            formatter: formatter,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimaryC(context),
+              letterSpacing: -0.3,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textTertiaryC(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Section — title + see-all link, used 3× on home
+// ────────────────────────────────────────────────────────────────────────────
+
+class _Section extends StatelessWidget {
+  const _Section({
+    required this.title,
+    required this.onSeeAll,
+    required this.padding,
+    required this.child,
+  });
+
+  final String title;
+  final VoidCallback onSeeAll;
+  final double padding;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _SectionHeader(
+          title: title,
+          onSeeAll: onSeeAll,
+          padding: padding,
+        ),
+        const SizedBox(height: 10),
+        child,
+      ],
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Loading skeleton — shimmer-only, no text
+// ────────────────────────────────────────────────────────────────────────────
+
+class _HomeSkeleton extends StatelessWidget {
+  const _HomeSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final pad = _pagePadding(context);
+    return ListView(
+      padding: EdgeInsets.fromLTRB(pad.left, pad.top + 40, pad.right, 24),
+      children: [
+        // Header row
+        Row(
+          children: [
+            const Shimmer(width: 38, height: 38, borderRadius: 12),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Shimmer(width: 80, height: 12),
+                  SizedBox(height: 6),
+                  Shimmer(width: 140, height: 16),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        // Hero card
+        Shimmer(
+          width: double.infinity,
+          height: 180,
+          borderRadius: AppRadius.xxl,
+        ),
+        const SizedBox(height: 16),
+        // Quick actions
+        Row(
+          children: [
+            for (var i = 0; i < 3; i++) ...[
+              if (i > 0) const SizedBox(width: 10),
+              Expanded(
+                child: Shimmer(height: 92, borderRadius: AppRadius.xxl),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 18),
+        // Stat grid
+        for (var r = 0; r < 2; r++) ...[
+          if (r > 0) const SizedBox(height: 10),
+          Row(
+            children: [
+              for (var c = 0; c < 2; c++) ...[
+                if (c > 0) const SizedBox(width: 10),
+                Expanded(
+                  child: Shimmer(height: 100, borderRadius: AppRadius.xxl),
+                ),
+              ],
+            ],
+          ),
+        ],
+        const SizedBox(height: 22),
+        Shimmer(width: 100, height: 16),
+        const SizedBox(height: 12),
+        Shimmer(height: 110, borderRadius: AppRadius.xxl),
+        const SizedBox(height: 16),
+        Shimmer(width: 100, height: 16),
+        const SizedBox(height: 12),
+        Shimmer(height: 110, borderRadius: AppRadius.xxl),
+      ],
+    );
+  }
+}
+
+class _HomeErrorState extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariantC(context),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.cloud_off_rounded,
+                size: 28,
+                color: AppColors.textTertiaryC(context),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              tr('No connection', 'কোনো সংযোগ নেই'),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: AppColors.textPrimaryC(context),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              tr('Pull to retry', 'রিফ্রেশ করতে টানুন'),
+              style: TextStyle(
+                color: AppColors.textTertiaryC(context),
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

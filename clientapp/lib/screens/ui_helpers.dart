@@ -1,19 +1,5 @@
 part of '../screens.dart';
 
-class _SoftSectionDivider extends StatelessWidget {
-  const _SoftSectionDivider({required this.padding});
-
-  final double padding;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: padding),
-      child: Divider(color: AppColors.borderLightC(context), thickness: 1, height: 1),
-    );
-  }
-}
-
 class _HeroCard extends StatelessWidget {
   const _HeroCard({
     required this.title,
