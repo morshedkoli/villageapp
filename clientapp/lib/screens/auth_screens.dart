@@ -1,6 +1,26 @@
 part of '../screens.dart';
 
 
+// =============================================================================
+// GOOGLE LOGIN SCREEN
+// -----------------------------------------------------------------------------
+// Modern, glassmorphic, animation-rich Google sign-in flow.
+//
+// Design notes:
+//  - Uses a deep, dual-orb radial gradient (dark by default, light-friendly
+//    through AppColors) so it never feels "default template".
+//  - Lottie hero (assets/login_animation.json) floats continuously; the
+//    title/subtitle and the sign-in card fade-and-slide in on first frame.
+//  - The "Continue with Google" button is a custom widget that:
+//      * Presses down with a tactile scale animation (HapticFeedback included).
+//      * Cross-fades the Google logo + label into a CircularProgressIndicator
+//        while the auth request is in-flight.
+//      * Resets cleanly when isLoading flips back to false.
+//  - All copy goes through tr() (English / বাংলা) to match the rest of the app.
+//  - Layout is responsive: a single scroll view, SafeArea-wrapped, with a
+//    max-width clamp on tablets/web so the card never looks stretched.
+// =============================================================================
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -10,305 +30,250 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
+  // -------- Loading state for the Google sign-in flow ---------------------
   bool _loading = false;
-  late final AnimationController _animController;
+
+  // -------- Animations ----------------------------------------------------
+  /// Entrance choreography: header (lottie + title) + card slide/fade in.
+  late final AnimationController _enterController;
+  late final Animation<double> _enterFade;
+  late final Animation<Offset> _enterSlide;
+
+  /// Continuous, gentle floating motion for the Lottie hero.
   late final AnimationController _floatController;
-  late final Animation<double> _fadeIn;
-  late final Animation<Offset> _slideUp;
   late final Animation<Offset> _floatAnim;
+
+  /// Two ambient orbs that drift slowly behind the card to add depth.
+  late final AnimationController _orbController;
   late final Animation<Offset> _orb1Anim;
   late final Animation<Offset> _orb2Anim;
+
+  // -------- Stagger timings (kept as named constants for clarity) --------
+  static const _enterDuration = Duration(milliseconds: 1200);
+  static const _floatDuration = Duration(milliseconds: 4200);
+  static const _orbDuration = Duration(milliseconds: 9000);
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
+
+    // One-shot entrance — header and card rise + fade in.
+    _enterController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: _enterDuration,
     );
-    
+    _enterFade = CurvedAnimation(
+      parent: _enterController,
+      curve: Curves.easeOutCubic,
+    );
+    _enterSlide = Tween<Offset>(
+      begin: const Offset(0, 0.18),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _enterController, curve: Curves.easeOutCubic),
+    );
+
+    // Lottie bobbing — symmetric sine, plays forever.
     _floatController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3000),
+      duration: _floatDuration,
+    );
+    _floatAnim = Tween<Offset>(
+      begin: const Offset(0, -0.015),
+      end: const Offset(0, 0.015),
+    ).animate(
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOutSine),
     );
 
-    _fadeIn = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _slideUp = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
-        .animate(
-          CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
-        );
-        
-    _floatAnim = Tween<Offset>(begin: const Offset(0, -0.02), end: const Offset(0, 0.02))
-        .animate(
-          CurvedAnimation(parent: _floatController, curve: Curves.easeInOutSine),
-        );
-    
-    _orb1Anim = Tween<Offset>(begin: const Offset(0, -0.05), end: const Offset(0, 0.05))
-        .animate(CurvedAnimation(parent: _floatController, curve: Curves.easeInOutSine));
-        
-    _orb2Anim = Tween<Offset>(begin: const Offset(0, 0.05), end: const Offset(0, -0.05))
-        .animate(CurvedAnimation(parent: _floatController, curve: Curves.easeInOutSine));
+    // Background orbs — counter-phase drift to feel alive, not gimmicky.
+    _orbController = AnimationController(
+      vsync: this,
+      duration: _orbDuration,
+    );
+    _orb1Anim = Tween<Offset>(
+      begin: const Offset(-0.04, -0.03),
+      end: const Offset(0.04, 0.03),
+    ).animate(
+      CurvedAnimation(parent: _orbController, curve: Curves.easeInOutSine),
+    );
+    _orb2Anim = Tween<Offset>(
+      begin: const Offset(0.05, 0.04),
+      end: const Offset(-0.05, -0.04),
+    ).animate(
+      CurvedAnimation(parent: _orbController, curve: Curves.easeInOutSine),
+    );
 
-    _animController.forward();
+    _enterController.forward();
     _floatController.repeat(reverse: true);
+    _orbController.repeat(reverse: true);
   }
 
   @override
   void dispose() {
-    _animController.dispose();
+    _enterController.dispose();
     _floatController.dispose();
+    _orbController.dispose();
     super.dispose();
   }
 
+  // -------------------------------------------------------------------------
+  // Build
+  // -------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final compact = size.width <= 360;
+    final media = MediaQuery.of(context);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
+      // Use a custom body to control the layered backdrop + orbs + content.
       body: Stack(
         children: [
+          // 1) Base gradient / mesh backdrop (defined globally).
           Positioned.fill(
             child: _pageBackdrop(
               safeArea: false,
               child: const SizedBox.expand(),
             ),
           ),
-          // Blurry Orbs for Glassmorphism pop
-          Positioned(
-            top: size.height * 0.05,
-            left: -size.width * 0.2,
-            child: SlideTransition(
-              position: _orb1Anim,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-                child: Container(
-                  width: size.width * 0.6,
-                  height: size.width * 0.6,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryC(context).withValues(alpha: 0.35),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ),
+
+          // 2) Two slowly-drifting, heavily-blurred orbs (depth + light).
+          _AmbientOrb(
+            animation: _orb1Anim,
+            size: size.width * 0.7,
+            alignment: Alignment(-0.8, -0.6),
+            color: AppColors.primaryC(context).withValues(alpha: 0.32),
+            blurSigma: 70,
           ),
-          Positioned(
-            bottom: size.height * 0.1,
-            right: -size.width * 0.2,
-            child: SlideTransition(
-              position: _orb2Anim,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
-                child: Container(
-                  width: size.width * 0.7,
-                  height: size.width * 0.7,
-                  decoration: BoxDecoration(
-                    color: Colors.blueAccent.withValues(alpha: 0.25),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ),
+          _AmbientOrb(
+            animation: _orb2Anim,
+            size: size.width * 0.85,
+            alignment: const Alignment(0.9, 0.95),
+            color: const Color(0xFF5B7CFA).withValues(alpha: 0.32),
+            blurSigma: 90,
           ),
-          // Main Content
+
+          // 3) Foreground content. The LayoutBuilder makes the scroll view
+          //    take the full available height, so when content is shorter
+          //    than the viewport the column expands to fill it (no white
+          //    band at the bottom) and only scrolls when it actually has
+          //    to (small phones / large accessibility text).
           SafeArea(
-            child: _constrainBodyWidth(
-              context,
-              SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 28),
-child: FadeTransition(
-               opacity: _fadeIn,
-               child: SlideTransition(
-                 position: _slideUp,
-                 child: Column(
-                   children: [
-                     const SizedBox(height: 12),
-                     // Back button
-                     Align(
-                       alignment: Alignment.centerLeft,
-                       child: Material(
-                         color: Colors.transparent,
-                         child: InkWell(
-                           onTap: () => Navigator.of(context).pop(),
-                           borderRadius: BorderRadius.circular(AppRadius.md),
-                           child: Container(
-                             width: 38,
-                             height: 38,
-                             alignment: Alignment.center,
-                             decoration: BoxDecoration(
-                               color: AppColors.surfaceC(context),
-                               borderRadius: BorderRadius.circular(AppRadius.md),
-                               border: Border.all(color: AppColors.borderC(context)),
-                             ),
-                             child: Icon(
-                               Icons.arrow_back_rounded,
-                               color: AppColors.textPrimaryC(context),
-                               size: 18,
-                             ),
-                           ),
-                         ),
-                       ),
-                     ),
-                     SizedBox(height: size.height * 0.03),
-                     // Lottie Animation with continuous floating motion
-                     SlideTransition(
-                       position: _floatAnim,
-                       child: Center(
-                         child: Container(
-                           height: 260,
-                           constraints: const BoxConstraints(maxWidth: 280),
-                           decoration: BoxDecoration(
-                             shape: BoxShape.circle,
-                             gradient: RadialGradient(
-                               colors: [
-                                 AppColors.primaryC(context).withValues(alpha: 0.15),
-                                 Colors.transparent,
-                               ],
-                             ),
-                           ),
-                           child: Lottie.asset(
-                             'assets/login_animation.json',
-                             fit: BoxFit.contain,
-                           ),
-                         ),
-                       ),
-                     ),
-                     const SizedBox(height: 32),
-                    Text(
-                      tr('Welcome to AL ISLAH', 'আল ইসলাহ-এ স্বাগতম'),
-                      style: AppTextStyles.headlineLarge.copyWith(
-                        letterSpacing: -0.5,
-                        fontWeight: FontWeight.w800,
-                      ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return _constrainBodyWidth(
+                  context,
+                  SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 20 : 28,
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      tr(
-                        'Sign in to your village community',
-                        'আপনার গ্রাম কমিউনিটিতে সাইন ইন করুন',
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight -
+                            media.padding.top -
+                            media.padding.bottom,
                       ),
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        color: AppColors.textSecondaryC(context),
-                        height: 1.4,
-                      ),
-                    ),
-                    SizedBox(height: size.height * 0.06),
-                    // Glassmorphic Login card
-                    SlideTransition(
-                      position: Tween<Offset>(begin: Offset.zero, end: const Offset(0, 0.015)).animate(_floatController),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.65),
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primaryC(context).withValues(alpha: 0.15),
-                                  blurRadius: 40,
-                                  spreadRadius: -10,
-                                  offset: const Offset(0, 20),
-                                ),
-                              ],
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.6),
-                                width: 1.5,
-                              ),
-                            ),
+                      child: IntrinsicHeight(
+                        child: FadeTransition(
+                          opacity: _enterFade,
+                          child: SlideTransition(
+                            position: _enterSlide,
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Text(
-                                  tr('Sign in to continue', 'চালিয়ে যেতে সাইন ইন করুন'),
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimaryC(context),
+                                const SizedBox(height: 12),
+
+                                // Top app-bar row: brand + back button.
+                                _TopBar(
+                                  onBack: () => Navigator.of(context).pop(),
+                                ),
+
+                                SizedBox(height: size.height * 0.02),
+
+                                // Lottie hero (continuously floating).
+                                SlideTransition(
+                                  position: _floatAnim,
+                                  child: _LottieHero(
+                                    height: size.height * 0.28,
+                                    maxWidth: 320,
+                                    lottieAsset: 'assets/login_animation.json',
+                                    glowColor: AppColors.primaryC(context),
                                   ),
                                 ),
-                                const SizedBox(height: 24),
-                                // Google Sign-In button
-                                PrimaryButton(
-                                  onPressed: _loading ? null : _signInWithGoogle,
-                                  label: _loading
-                                      ? tr('Signing in...', 'লগইন হচ্ছে...')
-                                      : tr(
-                                          'Continue with Google',
-                                          'Google দিয়ে প্রবেশ করুন',
-                                        ),
-                                  icon: Icons.g_mobiledata_rounded,
+
+                                const SizedBox(height: 28),
+
+                                // Header text.
+                                _LoginHeader(),
+
+                                SizedBox(height: size.height * 0.05),
+
+                                // The Google sign-in card (glassmorphic, focused).
+                                _LoginCard(
+                                  isLoading: _loading,
+                                  onGooglePressed: _signInWithGoogle,
                                 ),
+
+                                const SizedBox(height: 28),
+
+                                // Trust strip.
+                                _TrustStrip(),
+
+                                // Flexible spacer pushes the decorative
+                                // band to the bottom on tall devices, and
+                                // collapses to zero on short ones.
+                                const Spacer(),
+
+                                // Decorative brand band — keeps the bottom
+                                // of the screen inside the gradient palette
+                                // instead of revealing the page background.
+                                const _LoginFooterBand(),
                               ],
                             ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 28),
-                    // Info tiles
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _LoginInfoTile(
-                            icon: Icons.lock_outline_rounded,
-                            text: tr('Secure', 'নিরাপদ'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _LoginInfoTile(
-                            icon: Icons.shield_outlined,
-                            text: tr('Private', 'ব্যক্তিগত'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _LoginInfoTile(
-                            icon: Icons.flash_on_rounded,
-                            text: tr('Instant', 'তাৎক্ষণিক'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
           ),
-        ),
-      ),
         ],
       ),
     );
   }
 
+  // -------------------------------------------------------------------------
+  // Sign-in flow
+  // -------------------------------------------------------------------------
   Future<void> _signInWithGoogle() async {
+    if (_loading) return;
     setState(() => _loading = true);
+
+    // Light haptic for tactile feedback (iOS only — Android no-op on older
+    // API levels; this is the modern, supported path).
+    HapticFeedback.lightImpact();
+
     try {
       final isNew = await DataService.instance.signInWithGoogle();
       if (!mounted) return;
-      if (isNew || !(await DataService.instance.isProfileComplete())) {
-        // New user or incomplete profile → show profile setup.
-        if (!mounted) return;
+
+      final needsProfile = isNew || !(await DataService.instance.isProfileComplete());
+      if (needsProfile) {
         await Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
         );
       } else {
-        if (!mounted) return;
         Navigator.of(context).pop();
       }
     } catch (e) {
-      final message = _googleSignInErrorMessage(e);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(_googleSignInErrorMessage(e)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -319,12 +284,13 @@ child: FadeTransition(
     }
   }
 
+  // Surface a helpful, human-readable error for the most common
+  // misconfiguration (missing SHA in Firebase for Android builds).
   String _googleSignInErrorMessage(Object error) {
     if (error is PlatformException) {
       final raw = '${error.code} ${error.message ?? ''} ${error.details ?? ''}';
       final normalized = raw.toLowerCase();
-      final isConfigError =
-          normalized.contains('sign_in_failed') &&
+      final isConfigError = normalized.contains('sign_in_failed') &&
           (normalized.contains('api: 10') ||
               normalized.contains('api:10') ||
               normalized.contains('developer_error') ||
@@ -333,7 +299,7 @@ child: FadeTransition(
       if (isConfigError) {
         return tr(
           'Google login is not configured for this app build yet. Please contact support/admin to add Android SHA keys in Firebase and update google-services.json.',
-          'এই অ্যাপ বিল্ডের জন্য Google লগইন এখনো কনফিগার করা হয়নি। Firebase-এ Android SHA key যোগ করে google-services.json আপডেট করতে অ্যাডমিন/সাপোর্টের সাথে যোগাযোগ করুন।',
+          'এই অ্যাপ বিল্ডের জন্য Google লগইন এখনো কনফিগার করা হয়নি। Firebase-এ Android SHA key যোগ করে google-services.json আপডেট করতে অ্যাডমিন/সাপোর্টের সাথে যোগাযোগ করুন।',
         );
       }
     }
@@ -341,29 +307,390 @@ child: FadeTransition(
   }
 }
 
-class _LoginInfoTile extends StatelessWidget {
-  const _LoginInfoTile({required this.icon, required this.text});
+// =============================================================================
+// SUB-WIDGETS
+// =============================================================================
+
+/// A softly-blurred, animated orb that sits behind the content.
+///
+/// Uses [ImageFiltered] + [SlideTransition] so the GPU compositor handles the
+/// transform and blur cheaply — no layout thrash.
+class _AmbientOrb extends StatelessWidget {
+  const _AmbientOrb({
+    required this.animation,
+    required this.size,
+    required this.alignment,
+    required this.color,
+    required this.blurSigma,
+  });
+
+  final Animation<Offset> animation;
+  final double size;
+  final Alignment alignment;
+  final Color color;
+  final double blurSigma;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: Align(
+        alignment: alignment,
+        child: FractionalTranslation(
+          translation: animation.value,
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Top app-bar row: brand mark on the left, optional back chevron.
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.onBack});
+
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        // Brand mark — small monogram pill.
+        Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceC(context).withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderC(context)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primaryC(context),
+                      AppColors.primaryC(context).withValues(alpha: 0.7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: const Icon(
+                  Icons.home_rounded,
+                  color: Colors.white,
+                  size: 14,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                tr('AL ISLAH', 'আল ইসলাহ'),
+                style: AppTextStyles.labelLarge.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Spacer(),
+        // Back button (only meaningful when the route was pushed).
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onBack,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceC(context).withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.borderC(context)),
+              ),
+              child: Icon(
+                Icons.arrow_back_rounded,
+                color: AppColors.textPrimaryC(context),
+                size: 18,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Lottie hero with a soft radial glow behind it. Continuously floats via
+/// the parent SlideTransition.
+class _LottieHero extends StatelessWidget {
+  const _LottieHero({
+    required this.height,
+    required this.maxWidth,
+    required this.lottieAsset,
+    required this.glowColor,
+  });
+
+  final double height;
+  final double maxWidth;
+  final String lottieAsset;
+  final Color glowColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        height: height,
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              glowColor.withValues(alpha: 0.18),
+              glowColor.withValues(alpha: 0.0),
+            ],
+            stops: const [0.0, 1.0],
+          ),
+        ),
+        child: Lottie.asset(
+          lottieAsset,
+          fit: BoxFit.contain,
+          repeat: true,
+          // Defer load-error quietly to a tasteful fallback so a missing asset
+          // never breaks the entire screen.
+          errorBuilder: (context, error, stackTrace) {
+            return Icon(
+              Icons.lock_open_rounded,
+              size: height * 0.4,
+              color: glowColor,
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// The two-line header under the Lottie hero.
+class _LoginHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          tr('Welcome Back', 'স্বাগতম'),
+          textAlign: TextAlign.center,
+          style: AppTextStyles.headlineLarge.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.6,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          tr(
+            'Sign in to continue your journey',
+            'আপনার যাত্রা চালিয়ে যেতে সাইন ইন করুন',
+          ),
+          textAlign: TextAlign.center,
+          style: AppTextStyles.bodyLarge.copyWith(
+            color: AppColors.textSecondaryC(context),
+            height: 1.45,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Glassmorphic card that wraps the Google sign-in button.
+class _LoginCard extends StatelessWidget {
+  const _LoginCard({
+    required this.isLoading,
+    required this.onGooglePressed,
+  });
+
+  final bool isLoading;
+  final VoidCallback onGooglePressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(20, 26, 20, 26),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceC(context).withValues(alpha: 0.65),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.5),
+              width: 1.4,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryC(context).withValues(alpha: 0.18),
+                blurRadius: 40,
+                spreadRadius: -10,
+                offset: const Offset(0, 18),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Text(
+                tr('Sign in to continue', 'চালিয়ে যেতে সাইন ইন করুন'),
+                style: AppTextStyles.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimaryC(context),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                tr(
+                  'Use your Google account to get started in seconds.',
+                  'শুরু করতে আপনার Google অ্যাকাউন্ট ব্যবহার করুন — মাত্র কয়েক সেকেন্ডে।',
+                ),
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondaryC(context),
+                ),
+              ),
+              const SizedBox(height: 22),
+
+              // The star of the show.
+              GoogleSignInButton(
+                isLoading: isLoading,
+                onPressed: onGooglePressed,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Three-up trust strip under the card.
+class _TrustStrip extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _TrustTile(
+            icon: Icons.lock_outline_rounded,
+            label: tr('Secure', 'নিরাপদ'),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _TrustTile(
+            icon: Icons.shield_outlined,
+            label: tr('Private', 'ব্যক্তিগত'),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _TrustTile(
+            icon: Icons.bolt_rounded,
+            label: tr('Instant', 'তাৎক্ষণিক'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TrustTile extends StatelessWidget {
+  const _TrustTile({required this.icon, required this.label});
+
   final IconData icon;
-  final String text;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceC(context).withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.borderC(context)),
       ),
       child: Column(
         children: [
-          Icon(icon, color: AppColors.primaryC(context), size: 22),
+          Icon(icon, color: AppColors.primaryC(context), size: 20),
           const SizedBox(height: 6),
           Text(
-            text,
-            style: TextStyle(
+            label,
+            style: AppTextStyles.labelSmall.copyWith(
               color: AppColors.textSecondaryC(context),
-              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A small, decorative brand band that anchors the bottom of the login
+/// screen inside the gradient palette. Without it, when the scroll content
+/// is shorter than the viewport on tall devices, the page background
+/// (`PatternBackdrop`) peeks through and the bottom of the screen reads as
+/// flat white. This band keeps the visual story consistent end-to-end.
+class _LoginFooterBand extends StatelessWidget {
+  const _LoginFooterBand();
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = AppColors.primaryC(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 28, bottom: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Thin gradient hairline — a quiet echo of the top glow.
+          Container(
+            height: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 40),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  primary.withValues(alpha: 0.0),
+                  primary.withValues(alpha: 0.35),
+                  primary.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Caption — small, secondary, multi-lingual.
+          Text(
+            tr(
+              'Powered by your village community',
+              'আপনার গ্রামীণ কমিউনিটি দ্বারা পরিচালিত',
+            ),
+            textAlign: TextAlign.center,
+            style: AppTextStyles.labelSmall.copyWith(
+              color: AppColors.textSecondaryC(context),
+              letterSpacing: 0.3,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -371,6 +698,266 @@ class _LoginInfoTile extends StatelessWidget {
       ),
     );
   }
+}
+
+// =============================================================================
+// GOOGLE SIGN-IN BUTTON
+// -----------------------------------------------------------------------------
+// A self-contained, premium-feeling button that:
+//   * Animates a tactile scale-down on press (HapticFeedback included).
+//   * Cross-fades the Google logo + label into a CircularProgressIndicator
+//     while the parent is in a loading state.
+//   * Keeps an even-press surface and respects the loading state by ignoring
+//     additional taps while busy.
+// =============================================================================
+class GoogleSignInButton extends StatefulWidget {
+  const GoogleSignInButton({
+    super.key,
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  @override
+  State<GoogleSignInButton> createState() => _GoogleSignInButtonState();
+}
+
+class _GoogleSignInButtonState extends State<GoogleSignInButton>
+    with SingleTickerProviderStateMixin {
+  // Drives the press-down / release-up micro-animation.
+  late final AnimationController _pressController;
+  late final Animation<double> _pressScale;
+  late final Animation<double> _pressElevation;
+
+  static const _pressDuration = Duration(milliseconds: 140);
+
+  @override
+  void initState() {
+    super.initState();
+    _pressController = AnimationController(
+      vsync: this,
+      duration: _pressDuration,
+      lowerBound: 0.0,
+      upperBound: 1.0,
+    );
+    _pressScale = Tween<double>(begin: 1.0, end: 0.96).animate(
+      CurvedAnimation(parent: _pressController, curve: Curves.easeOutCubic),
+    );
+    _pressElevation = Tween<double>(begin: 18, end: 6).animate(
+      CurvedAnimation(parent: _pressController, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pressController.dispose();
+    super.dispose();
+  }
+
+  void _handlePressDown() {
+    if (widget.isLoading) return;
+    _pressController.forward();
+  }
+
+  void _handlePressUp() {
+    if (widget.isLoading) return;
+    _pressController.reverse();
+  }
+
+  Future<void> _handleTap() async {
+    if (widget.isLoading) return;
+    HapticFeedback.selectionClick();
+    widget.onPressed();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: tr('Continue with Google', 'Google দিয়ে প্রবেশ করুন'),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _handlePressDown(),
+        onTapUp: (_) => _handlePressUp(),
+        onTapCancel: _handlePressUp,
+        onTap: _handleTap,
+        child: AnimatedBuilder(
+          animation: _pressController,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _pressScale.value,
+              child: child,
+            );
+          },
+          // The child never depends on AnimatedBuilder, so the rebuild
+          // surface is small.
+          child: _buildButtonSurface(context),
+        ),
+      ),
+    );
+  }
+
+  /// The actual painted button surface. Static within the press animation.
+  Widget _buildButtonSurface(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return AnimatedBuilder(
+      animation: _pressController,
+      builder: (context, _) {
+        return Container(
+          height: 56,
+          decoration: BoxDecoration(
+            color: dark ? Colors.white : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.black.withValues(alpha: 0.06),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.10),
+                blurRadius: _pressElevation.value,
+                spreadRadius: -2,
+                offset: Offset(0, _pressElevation.value / 3),
+              ),
+            ],
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Layer A: Google logo + label (visible when idle).
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                opacity: widget.isLoading ? 0.0 : 1.0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // The official Google "G" — multi-color, vector-style.
+                    // Using a hand-rolled widget instead of a PNG keeps the
+                    // build slim and the colors brand-accurate at any DPR.
+                    const _GoogleLogo(size: 22),
+                    const SizedBox(width: 12),
+                    Text(
+                      tr('Continue with Google', 'Google দিয়ে প্রবেশ করুন'),
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1F1F1F),
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Layer B: spinner (visible while loading).
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                opacity: widget.isLoading ? 1.0 : 0.0,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xFF1A73E8), // Google Blue
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      tr('Signing you in…', 'লগইন হচ্ছে…'),
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1F1F1F),
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Hand-rolled Google "G" logo using CustomPaint so we don't ship a PNG asset.
+///
+/// Uses the four official Google brand colors:
+///   #4285F4 (blue), #34A853 (green), #FBBC04 (yellow), #EA4335 (red).
+class _GoogleLogo extends StatelessWidget {
+  const _GoogleLogo({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _GoogleLogoPainter(),
+      ),
+    );
+  }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final cx = w / 2;
+    final cy = h / 2;
+    final r = w * 0.45;
+
+    // Outer ring composed of four arcs (clockwise from top).
+    final rect = Rect.fromCircle(center: Offset(cx, cy), radius: r);
+    const stroke = 0.18; // proportional to radius
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * stroke
+      ..strokeCap = StrokeCap.butt;
+
+    // Blue: top → right (270° → 360°/0°)
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(rect, -1.5708, 1.5708, false, paint);
+    // Green: right → bottom (0° → 90°)
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(rect, 0, 1.5708, false, paint);
+    // Yellow: bottom → left (90° → 180°)
+    paint.color = const Color(0xFFFBBC04);
+    canvas.drawArc(rect, 1.5708, 1.5708, false, paint);
+    // Red: left → top (180° → 270°)
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(rect, 3.1416, 1.5708, false, paint);
+
+    // Inner horizontal bar (the "G" cross-stroke) — drawn as a short line
+    // from the center to the right edge.
+    final barPaint = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * stroke
+      ..strokeCap = StrokeCap.butt;
+    canvas.drawLine(
+      Offset(cx, cy),
+      Offset(cx + r * 0.92, cy),
+      barPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ─── Profile Setup Screen ───────────────────────────────────────────────────

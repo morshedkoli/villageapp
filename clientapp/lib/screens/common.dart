@@ -775,6 +775,7 @@ Widget _pageBackdrop({required Widget child, bool safeArea = false}) {
   return PatternBackdrop(
     child: Stack(
       children: [
+        // Top glow — matches the existing brand-coloured halo.
         Positioned(
           top: -120,
           left: -40,
@@ -782,6 +783,27 @@ Widget _pageBackdrop({required Widget child, bool safeArea = false}) {
           child: IgnorePointer(
             child: Container(
               height: 280,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: AppColors.pageTopGlowGradient,
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Bottom glow — ensures the gradient extends past the scroll content
+        // so the bottom of the screen never looks flat/white on tall devices
+        // (notably the login screen, where the scroll view can be shorter
+        // than the viewport).
+        Positioned(
+          left: -40,
+          right: -40,
+          bottom: -160,
+          child: IgnorePointer(
+            child: Container(
+              height: 320,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: AppColors.pageTopGlowGradient,

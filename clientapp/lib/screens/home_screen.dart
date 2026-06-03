@@ -1,25 +1,76 @@
 part of '../screens.dart';
 
-/// Home screen — production-polished, minimal copy, animated.
+/// Home screen — full-bleed glassmorphic surface, designed to match the
+/// login page's "Antigravity" visual language.
 ///
-/// Layout philosophy:
-///   • Numbers and icons over paragraphs
-///   • Single hero metric (available balance) with secondary line
-///   • Quick actions as 2-up chips with concise verbs
-///   • Stat grid: 4 numbers, no labels-as-sentences
-///   • Sectioned scroll: Donations → Problems → Projects, each compact
+/// Visual ingredients (same as the login page):
+///   * Tinted brand backdrop (the global _pageBackdrop) with two ambient
+///     orbs drifting behind the content.
+///   * Glassmorphic hero balance card (echoes the login lottie hero).
+///   * Glass quick-action chips + glass stat grid (matches the login trust
+///     strip treatment).
+///   * Horizontal carousel cards for Donations / Problems / Projects, each
+///     in a glass surface with a soft brand-tinted shadow.
+///   * Decorative gradient hairline + bilingual footer band at the very
+///     bottom — exact replica of the login screen's footer band.
 ///
-/// Motion:
-///   • Staggered entrance via [StaggeredColumn]
-///   • Animated stat counts via [AnimatedCount]
-///   • Pull-to-refresh with adequate haptic on success
-class HomeScreen extends StatelessWidget {
+/// Data wiring is preserved from the previous design:
+///   * `villageOverview()` stream drives the hero card and stat grid.
+///   * `donations / problems / projects` streams drive the three carousels.
+///   * Pull-to-refresh with a confirm haptic on success.
+///   * Loading skeleton and offline error state are kept verbatim.
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin {
+  // -------- Entrance choreography -----------------------------------------
+  late final AnimationController _enterController;
+  late final Animation<double> _enterFade;
+  late final Animation<Offset> _enterSlide;
+
+  static const _enterDuration = Duration(milliseconds: 800);
+
+  @override
+  void initState() {
+    super.initState();
+
+    _enterController = AnimationController(
+      vsync: this,
+      duration: _enterDuration,
+    );
+    _enterFade = CurvedAnimation(
+      parent: _enterController,
+      curve: Curves.easeOutCubic,
+    );
+    _enterSlide = Tween<Offset>(
+      begin: const Offset(0, 0.10),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _enterController, curve: Curves.easeOutCubic),
+    );
+
+    _enterController.forward();
+  }
+
+  @override
+  void dispose() {
+    _enterController.dispose();
+    super.dispose();
+  }
+
+  // -------------------------------------------------------------------------
+  // Build
+  // -------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final data = DataService.instance;
     final pad = _pagePadding(context);
+    final media = MediaQuery.of(context);
 
     return StreamBuilder<VillageOverview>(
       stream: data.villageOverview(),
@@ -52,166 +103,197 @@ class HomeScreen extends StatelessWidget {
             ]);
             Haptics.confirm();
           },
-          child: _constrainBodyWidth(
-            context,
-            ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 24),
-              children: [
-                // Header (greeting + actions)
-                _AppHeader(
-                  showMenuButton: !_useDesktopSidebar(context),
-                  actions: [
-                    _HeaderActionButton(
-                      icon: Icons.search_rounded,
-                      onTap: () => Navigator.of(context).push(
-                        FadeThroughPageRoute(page: const CitizensPage()),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const _NotificationButton(),
-                  ],
-                ),
-                const SizedBox(height: 4),
-
-                // Hero balance card
-                FadeSlideIn(
-                  duration: const Duration(milliseconds: 380),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: pad.left),
-                    child: StreamBuilder<int>(
-                      stream: data.citizenCount(),
-                      builder: (context, citizenSnap) {
-                        return _HeroCard(
-                          title: overview.name,
-                          balance: currency.format(overview.availableBalance),
-                          expense: currency.format(overview.totalSpent),
-                          citizens: citizenSnap.data ?? overview.totalCitizens,
-                        );
-                      },
-                    ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return _constrainBodyWidth(
+                context,
+                SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                // Quick actions row (3-up, no wrap)
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 60),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: pad.left),
-                    child: _QuickActionRow(
-                      actions: [
-                        _QuickActionData(
-                          icon: Icons.volunteer_activism_rounded,
-                          label: tr('Donate', 'অনুদান'),
-                          color: AppColors.primaryC(context),
-                          onTap: () async {
-                            final ok = await _ensureLogin(context);
-                            if (!context.mounted || !ok) return;
-                            Haptics.tap();
-                            Navigator.of(context).push(
-                              FadeThroughPageRoute(page: const DonateScreen()),
-                            );
-                          },
-                        ),
-                        _QuickActionData(
-                          icon: Icons.people_alt_rounded,
-                          label: tr('Citizens', 'নাগরিক'),
-                          color: AppColors.infoC(context),
-                          onTap: () {
-                            Haptics.tap();
-                            Navigator.of(context).push(
-                              FadeThroughPageRoute(page: const CitizensPage()),
-                            );
-                          },
-                        ),
-                        _QuickActionData(
-                          icon: Icons.emoji_events_rounded,
-                          label: tr('Leaders', 'লিডার'),
-                          color: AppColors.warningC(context),
-                          onTap: () {
-                            Haptics.tap();
-                            Navigator.of(context).push(
-                              FadeThroughPageRoute(
-                                page: const LeaderboardPage(),
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight -
+                          media.padding.top -
+                          media.padding.bottom -
+                          40,
+                    ),
+                    child: IntrinsicHeight(
+                      child: FadeTransition(
+                        opacity: _enterFade,
+                        child: SlideTransition(
+                          position: _enterSlide,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header (greeting + actions)
+                              _AppHeader(
+                                showMenuButton: !_useDesktopSidebar(context),
+                                actions: [
+                                  _HeaderActionButton(
+                                    icon: Icons.search_rounded,
+                                    onTap: () => Navigator.of(context).push(
+                                      FadeThroughPageRoute(
+                                        page: const CitizensPage(),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const _NotificationButton(),
+                                ],
                               ),
-                            );
-                          },
+                              const SizedBox(height: 4),
+
+                              // Hero balance card
+                              Padding(
+                                padding:
+                                    EdgeInsets.symmetric(horizontal: pad.left),
+                                child: StreamBuilder<int>(
+                                  stream: data.citizenCount(),
+                                  builder: (context, citizenSnap) {
+                                    return _HeroCard(
+                                      title: overview.name,
+                                      balance:
+                                          currency.format(overview.availableBalance),
+                                      expense:
+                                          currency.format(overview.totalSpent),
+                                      citizens: citizenSnap.data ??
+                                          overview.totalCitizens,
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Quick actions row (3-up)
+                              Padding(
+                                padding:
+                                    EdgeInsets.symmetric(horizontal: pad.left),
+                                child: _QuickActionRow(
+                                  actions: [
+                                    _QuickActionData(
+                                      icon: Icons.volunteer_activism_rounded,
+                                      label: tr('Donate', 'অনুদান'),
+                                      color: AppColors.primaryC(context),
+                                      onTap: () async {
+                                        final ok = await _ensureLogin(context);
+                                        if (!context.mounted || !ok) return;
+                                        Haptics.tap();
+                                        Navigator.of(context).push(
+                                          FadeThroughPageRoute(
+                                            page: const DonateScreen(),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    _QuickActionData(
+                                      icon: Icons.people_alt_rounded,
+                                      label: tr('Citizens', 'নাগরিক'),
+                                      color: AppColors.infoC(context),
+                                      onTap: () {
+                                        Haptics.tap();
+                                        Navigator.of(context).push(
+                                          FadeThroughPageRoute(
+                                            page: const CitizensPage(),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    _QuickActionData(
+                                      icon: Icons.emoji_events_rounded,
+                                      label: tr('Leaders', 'লিডার'),
+                                      color: AppColors.warningC(context),
+                                      onTap: () {
+                                        Haptics.tap();
+                                        Navigator.of(context).push(
+                                          FadeThroughPageRoute(
+                                            page: const LeaderboardPage(),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+
+                              // Stat grid (4 numbers, animated counts)
+                              Padding(
+                                padding:
+                                    EdgeInsets.symmetric(horizontal: pad.left),
+                                child: _StatGrid(overview: overview),
+                              ),
+                              const SizedBox(height: 22),
+
+                              // Recent Donations
+                              _Section(
+                                title: tr('Donations', 'অনুদান'),
+                                onSeeAll: () => Navigator.of(context).push(
+                                  FadeThroughPageRoute(
+                                    page: const VillageFundScreen(),
+                                  ),
+                                ),
+                                padding: pad.left,
+                                child: StreamBuilder<List<Donation>>(
+                                  stream: data.donations(limit: 8),
+                                  builder: (context, ds) =>
+                                      _HorizontalDonationList(
+                                    items: ds.data ?? const [],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+
+                              // Latest Problems
+                              _Section(
+                                title: tr('Problems', 'সমস্যা'),
+                                onSeeAll: () => _openRootTab(context, 1),
+                                padding: pad.left,
+                                child: StreamBuilder<List<ProblemReport>>(
+                                  stream: data.problems(limit: 8),
+                                  builder: (context, ps) =>
+                                      _HorizontalProblemList(
+                                    items: ps.data ?? const [],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+
+                              // Active Projects
+                              _Section(
+                                title: tr('Projects', 'প্রকল্প'),
+                                onSeeAll: () => Navigator.of(context).push(
+                                  FadeThroughPageRoute(
+                                    page: const ProjectsScreen(),
+                                  ),
+                                ),
+                                padding: pad.left,
+                                child:
+                                    StreamBuilder<List<DevelopmentProject>>(
+                                  stream: data.projects(limit: 8),
+                                  builder: (context, pr) {
+                                    final items =
+                                        (pr.data ?? const <DevelopmentProject>[])
+                                            .where((e) => e.status != 'Completed')
+                                            .toList();
+                                    return _HorizontalProjectList(items: items);
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+
+                              // Footer band — gradient hairline + caption.
+                              const _HomeFooterBand(),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-
-                // Stat grid — 4 numbers, animated counts
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 120),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: pad.left),
-                    child: _StatGrid(overview: overview),
-                  ),
-                ),
-                const SizedBox(height: 22),
-
-                // Recent Donations
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 180),
-                  child: _Section(
-                    title: tr('Donations', 'অনুদান'),
-                    onSeeAll: () => Navigator.of(context).push(
-                      FadeThroughPageRoute(page: const VillageFundScreen()),
-                    ),
-                    padding: pad.left,
-                    child: StreamBuilder<List<Donation>>(
-                      stream: data.donations(limit: 8),
-                      builder: (context, ds) => _HorizontalDonationList(
-                        items: ds.data ?? const [],
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 22),
-
-                // Latest Problems
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 220),
-                  child: _Section(
-                    title: tr('Problems', 'সমস্যা'),
-                    onSeeAll: () => _openRootTab(context, 1),
-                    padding: pad.left,
-                    child: StreamBuilder<List<ProblemReport>>(
-                      stream: data.problems(limit: 8),
-                      builder: (context, ps) =>
-                          _HorizontalProblemList(items: ps.data ?? const []),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 22),
-
-                // Active Projects
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 260),
-                  child: _Section(
-                    title: tr('Projects', 'প্রকল্প'),
-                    onSeeAll: () => Navigator.of(context).push(
-                      FadeThroughPageRoute(page: const ProjectsScreen()),
-                    ),
-                    padding: pad.left,
-                    child: StreamBuilder<List<DevelopmentProject>>(
-                      stream: data.projects(limit: 8),
-                      builder: (context, pr) {
-                        final items = (pr.data ?? const <DevelopmentProject>[])
-                            .where((e) => e.status != 'Completed')
-                            .toList();
-                        return _HorizontalProjectList(items: items);
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
+              );
+            },
           ),
         );
       },
@@ -219,9 +301,11 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Quick Action Row — 3 chips, no labels overflow, square icons
-// ────────────────────────────────────────────────────────────────────────────
+// =============================================================================
+// SUB-WIDGETS
+// =============================================================================
+
+// ─── Quick Action Row — 3 glass chips with a tinted icon container ─────────
 
 class _QuickActionData {
   const _QuickActionData({
@@ -264,45 +348,60 @@ class _QuickActionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return PressScale(
       onTap: data.onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceC(context),
-          borderRadius: BorderRadius.circular(AppRadius.xxl),
-          border: Border.all(color: AppColors.borderC(context), width: 1),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: data.color.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(AppRadius.md),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceC(context).withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.55),
+                width: 1.2,
               ),
-              child: Icon(data.icon, color: data.color, size: 20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryC(context).withValues(alpha: 0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-            Text(
-              data.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimaryC(context),
-              ),
+            child: Column(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: data.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(data.icon, color: data.color, size: 20),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  data.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimaryC(context),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Stat grid — 4-up with animated counts and icon chips
-// ────────────────────────────────────────────────────────────────────────────
+// ─── Stat grid — 4 glass tiles with animated counts ───────────────────────
 
 class _StatGrid extends StatelessWidget {
   const _StatGrid({required this.overview});
@@ -316,7 +415,7 @@ class _StatGrid extends StatelessWidget {
       stream: data.projectsCount(),
       builder: (context, projectSnap) {
         return StreamBuilder<int>(
-          stream: data.problems().map((l) => l.length),
+          stream: data.problems(limit: 1000).map((l) => l.length),
           builder: (context, problemSnap) {
             return Column(
               children: [
@@ -391,54 +490,68 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceC(context),
-        borderRadius: BorderRadius.circular(AppRadius.xxl),
-        border: Border.all(color: AppColors.borderC(context), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(AppRadius.md),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceC(context).withValues(alpha: 0.65),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.55),
+              width: 1.2,
             ),
-            child: Icon(icon, color: color, size: 16),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryC(context).withValues(alpha: 0.08),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          AnimatedCount(
-            value: value,
-            formatter: formatter,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimaryC(context),
-              letterSpacing: -0.3,
-              height: 1.1,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 16),
+              ),
+              const SizedBox(height: 12),
+              AnimatedCount(
+                value: value,
+                formatter: formatter,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimaryC(context),
+                  letterSpacing: -0.3,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textTertiaryC(context),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textTertiaryC(context),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Section — title + see-all link, used 3× on home
-// ────────────────────────────────────────────────────────────────────────────
+// ─── Section header — title + see-all, used 3× on home ────────────────────
 
 class _Section extends StatelessWidget {
   const _Section({
@@ -456,22 +569,68 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionHeader(
           title: title,
           onSeeAll: onSeeAll,
           padding: padding,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         child,
       ],
     );
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Loading skeleton — shimmer-only, no text
-// ────────────────────────────────────────────────────────────────────────────
+// ─── Footer band — gradient hairline + bilingual caption ───────────────────
+
+/// Decorative brand band at the very bottom — exact replica of the login
+/// screen's footer band so the end-of-page story is consistent across
+/// surfaces.
+class _HomeFooterBand extends StatelessWidget {
+  const _HomeFooterBand();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            height: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 40),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primaryC(context).withValues(alpha: 0.0),
+                  AppColors.primaryC(context).withValues(alpha: 0.35),
+                  AppColors.primaryC(context).withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            tr(
+              'Powered by your village community',
+              'আপনার গ্রামীণ কমিউনিটি দ্বারা পরিচালিত',
+            ),
+            textAlign: TextAlign.center,
+            style: AppTextStyles.labelSmall.copyWith(
+              color: AppColors.textSecondaryC(context),
+              letterSpacing: 0.3,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Loading skeleton — shimmer-only, no text (unchanged shape) ───────────
 
 class _HomeSkeleton extends StatelessWidget {
   const _HomeSkeleton();
