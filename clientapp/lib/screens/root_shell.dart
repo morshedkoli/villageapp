@@ -231,7 +231,7 @@ class _NavTab extends StatelessWidget {
         splashColor: cs.primary.withValues(alpha: 0.06),
         highlightColor: cs.primary.withValues(alpha: 0.04),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

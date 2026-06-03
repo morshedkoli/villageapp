@@ -9,30 +9,54 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   bool _loading = false;
   late final AnimationController _animController;
+  late final AnimationController _floatController;
   late final Animation<double> _fadeIn;
   late final Animation<Offset> _slideUp;
+  late final Animation<Offset> _floatAnim;
+  late final Animation<Offset> _orb1Anim;
+  late final Animation<Offset> _orb2Anim;
 
   @override
   void initState() {
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1200),
     );
+    
+    _floatController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    );
+
     _fadeIn = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _slideUp = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero)
+    _slideUp = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
         .animate(
-          CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+          CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
         );
+        
+    _floatAnim = Tween<Offset>(begin: const Offset(0, -0.02), end: const Offset(0, 0.02))
+        .animate(
+          CurvedAnimation(parent: _floatController, curve: Curves.easeInOutSine),
+        );
+    
+    _orb1Anim = Tween<Offset>(begin: const Offset(0, -0.05), end: const Offset(0, 0.05))
+        .animate(CurvedAnimation(parent: _floatController, curve: Curves.easeInOutSine));
+        
+    _orb2Anim = Tween<Offset>(begin: const Offset(0, 0.05), end: const Offset(0, -0.05))
+        .animate(CurvedAnimation(parent: _floatController, curve: Curves.easeInOutSine));
+
     _animController.forward();
+    _floatController.repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _animController.dispose();
+    _floatController.dispose();
     super.dispose();
   }
 
@@ -42,108 +66,187 @@ class _LoginScreenState extends State<LoginScreen>
     final compact = size.width <= 360;
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: _pageBackdrop(
-        safeArea: true,
-        child: _constrainBodyWidth(
-          context,
-          SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 28),
-            child: FadeTransition(
-              opacity: _fadeIn,
-              child: SlideTransition(
-                position: _slideUp,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 12),
-                    // Back button
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => Navigator.of(context).pop(),
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          child: Container(
-                            width: 38,
-                            height: 38,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceC(context),
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              border: Border.all(color: AppColors.borderC(context)),
-                            ),
-                            child: Icon(
-                              Icons.arrow_back_rounded,
-                              color: AppColors.textPrimaryC(context),
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: size.height * 0.06),
-                    // Village icon
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryMutedC(context),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Icon(
-                        Icons.location_city_rounded,
-                        color: AppColors.primaryC(context),
-                        size: 36,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: _pageBackdrop(
+              safeArea: false,
+              child: const SizedBox.expand(),
+            ),
+          ),
+          // Blurry Orbs for Glassmorphism pop
+          Positioned(
+            top: size.height * 0.05,
+            left: -size.width * 0.2,
+            child: SlideTransition(
+              position: _orb1Anim,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                child: Container(
+                  width: size.width * 0.6,
+                  height: size.width * 0.6,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryC(context).withValues(alpha: 0.35),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: size.height * 0.1,
+            right: -size.width * 0.2,
+            child: SlideTransition(
+              position: _orb2Anim,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                child: Container(
+                  width: size.width * 0.7,
+                  height: size.width * 0.7,
+                  decoration: BoxDecoration(
+                    color: Colors.blueAccent.withValues(alpha: 0.25),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Main Content
+          SafeArea(
+            child: _constrainBodyWidth(
+              context,
+              SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 28),
+child: FadeTransition(
+               opacity: _fadeIn,
+               child: SlideTransition(
+                 position: _slideUp,
+                 child: Column(
+                   children: [
+                     const SizedBox(height: 12),
+                     // Back button
+                     Align(
+                       alignment: Alignment.centerLeft,
+                       child: Material(
+                         color: Colors.transparent,
+                         child: InkWell(
+                           onTap: () => Navigator.of(context).pop(),
+                           borderRadius: BorderRadius.circular(AppRadius.md),
+                           child: Container(
+                             width: 38,
+                             height: 38,
+                             alignment: Alignment.center,
+                             decoration: BoxDecoration(
+                               color: AppColors.surfaceC(context),
+                               borderRadius: BorderRadius.circular(AppRadius.md),
+                               border: Border.all(color: AppColors.borderC(context)),
+                             ),
+                             child: Icon(
+                               Icons.arrow_back_rounded,
+                               color: AppColors.textPrimaryC(context),
+                               size: 18,
+                             ),
+                           ),
+                         ),
+                       ),
+                     ),
+                     SizedBox(height: size.height * 0.03),
+                     // Lottie Animation with continuous floating motion
+                     SlideTransition(
+                       position: _floatAnim,
+                       child: Center(
+                         child: Container(
+                           height: 260,
+                           constraints: const BoxConstraints(maxWidth: 280),
+                           decoration: BoxDecoration(
+                             shape: BoxShape.circle,
+                             gradient: RadialGradient(
+                               colors: [
+                                 AppColors.primaryC(context).withValues(alpha: 0.15),
+                                 Colors.transparent,
+                               ],
+                             ),
+                           ),
+                           child: Lottie.asset(
+                             'assets/login_animation.json',
+                             fit: BoxFit.contain,
+                           ),
+                         ),
+                       ),
+                     ),
+                     const SizedBox(height: 32),
                     Text(
                       tr('Welcome to AL ISLAH', 'আল ইসলাহ-এ স্বাগতম'),
                       style: AppTextStyles.headlineLarge.copyWith(
-                        letterSpacing: -0.4,
+                        letterSpacing: -0.5,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
                       tr(
                         'Sign in to your village community',
                         'আপনার গ্রাম কমিউনিটিতে সাইন ইন করুন',
                       ),
                       textAlign: TextAlign.center,
-                      style: AppTextStyles.bodyLarge,
-                    ),
-                    SizedBox(height: size.height * 0.05),
-                    // Login card
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.borderC(context)),
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        color: AppColors.textSecondaryC(context),
+                        height: 1.4,
                       ),
-                      child: Column(
-                        children: [
-                          Text(
-                            tr('Sign in with', 'সাইন ইন করুন'),
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondaryC(context),
+                    ),
+                    SizedBox(height: size.height * 0.06),
+                    // Glassmorphic Login card
+                    SlideTransition(
+                      position: Tween<Offset>(begin: Offset.zero, end: const Offset(0, 0.015)).animate(_floatController),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primaryC(context).withValues(alpha: 0.15),
+                                  blurRadius: 40,
+                                  spreadRadius: -10,
+                                  offset: const Offset(0, 20),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.6),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  tr('Sign in to continue', 'চালিয়ে যেতে সাইন ইন করুন'),
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimaryC(context),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                // Google Sign-In button
+                                PrimaryButton(
+                                  onPressed: _loading ? null : _signInWithGoogle,
+                                  label: _loading
+                                      ? tr('Signing in...', 'লগইন হচ্ছে...')
+                                      : tr(
+                                          'Continue with Google',
+                                          'Google দিয়ে প্রবেশ করুন',
+                                        ),
+                                  icon: Icons.g_mobiledata_rounded,
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          // Google Sign-In button
-                          SecondaryButton(
-                            onPressed: _loading ? null : _signInWithGoogle,
-                            label: _loading
-                                ? tr('Signing in...', 'লগইন হচ্ছে...')
-                                : tr(
-                                    'Continue with Google',
-                                    'Google দিয়ে প্রবেশ করুন',
-                                  ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 28),
@@ -179,6 +282,8 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ),
+      ),
+        ],
       ),
     );
   }
