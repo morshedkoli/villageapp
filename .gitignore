@@ -3,4 +3,9 @@
 .superpowers/
 clientapp/nul
 .DS_Store
+**/build/
+**/android/app/build/
+**/android/build/
+*.apk
+*.aab
 
