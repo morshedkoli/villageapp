@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AL ISLAH Premium Green — Your Islamic Lifestyle Companion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html {
+      scroll-behavior: smooth;
+      scroll-snap-type: y proximity;
+    }
+    body {
+      font-family: 'Raleway', sans-serif;
+      color: #4C1D95;
+      background: #FAF5FF;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    img { max-width: 100%; display: block; }
+    a { text-decoration: none; color: inherit; }
+    button, a { cursor: pointer; }
+    button:focus-visible, a:focus-visible {
+      outline: 3px solid #7C3AED;
+      outline-offset: 2px;
+    }
+    ul { list-style: none; }
+
+    /* ===== REDUCED MOTION ===== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      html { scroll-behavior: auto; }
+    }
+
+    /* ===== TYPOGRAPHY ===== */
+    h1, h2, h3, h4 {
+      font-family: 'Lora', serif;
+      color: #4C1D95;
+    }
+    h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; line-height: 1.15; }
+    h2 { font-size: clamp(1.75rem, 4vw, 2.75rem); font-weight: 600; line-height: 1.2; }
+    h3 { font-size: clamp(1.25rem, 2.5vw, 1.5rem); font-weight: 600; line-height: 1.3; }
+
+    /* ===== CONTAINER ===== */
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(250, 245, 255, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(124, 58, 237, 0.10);
+      transition: background 300ms;
+    }
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Lora', serif;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: #4C1D95;
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #7C3AED, #22C55E);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 1.1rem;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+    .nav-links a {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #6D3A9E;
+      transition: color 200ms;
+      position: relative;
+    }
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: -4px; left: 0;
+      width: 0; height: 2px;
+      background: #22C55E;
+      transition: width 250ms;
+    }
+    .nav-links a:hover { color: #22C55E; }
+    .nav-links a:hover::after { width: 100%; }
+    .nav-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 20px;
+      background: #22C55E;
+      color: #fff !important;
+      border-radius: 100px;
+      font-weight: 600;
+      font-size: 0.8125rem;
+      transition: background 200ms, transform 200ms;
+    }
+    .nav-download::after { display: none !important; }
+    .nav-download:hover {
+      background: #16A34A;
+      transform: translateY(-1px);
+      color: #fff !important;
+    }
+    .nav-download svg { width: 16px; height: 16px; }
+
+    /* Mobile menu toggle */
+    .menu-toggle {
+      display: none;
+      background: none; border: none;
+      padding: 8px;
+      color: #4C1D95;
+    }
+
+    /* ===== HERO ===== */
+    .section-hero {
+      padding: 140px 0 80px;
+      scroll-snap-align: start;
+      position: relative;
+      overflow: hidden;
+    }
+    .section-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 600px 400px at 10% 30%, rgba(124, 58, 237, 0.08), transparent),
+        radial-gradient(ellipse 500px 500px at 90% 70%, rgba(34, 197, 94, 0.06), transparent);
+      pointer-events: none;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      background: rgba(124, 58, 237, 0.10);
+      border: 1px solid rgba(124, 58, 237, 0.20);
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #7C3AED;
+      margin-bottom: 20px;
+    }
+    .hero-badge svg { width: 14px; height: 14px; }
+    .hero-title span {
+      background: linear-gradient(135deg, #7C3AED, #22C55E);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: clamp(1rem, 1.8vw, 1.15rem);
+      color: #7C4D9E;
+      margin-top: 16px;
+      max-width: 480px;
+      line-height: 1.7;
+    }
+    .hero-rating {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .hero-stars {
+      display: flex;
+      gap: 2px;
+      color: #22C55E;
+    }
+    .hero-stars svg { width: 18px; height: 18px; fill: #22C55E; }
+    .hero-rating-text {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .hero-rating-text small {
+      font-weight: 400;
+      color: #7C4D9E;
+    }
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      border: none;
+      transition: all 250ms;
+      font-family: 'Raleway', sans-serif;
+    }
+    .btn svg { width: 20px; height: 20px; }
+    .btn-primary {
+      background: linear-gradient(135deg, #22C55E, #16A34A);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(34, 197, 94, 0.35);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(34, 197, 94, 0.40);
+    }
+    .btn-secondary {
+      background: #fff;
+      color: #4C1D95;
+      border: 2px solid rgba(124, 58, 237, 0.15);
+    }
+    .btn-secondary:hover {
+      border-color: #7C3AED;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(124, 58, 237, 0.12);
+    }
+    .hero-qr {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid rgba(124, 58, 237, 0.10);
+    }
+    .hero-qr svg { width: 40px; height: 40px; }
+    .hero-qr-text {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: #7C4D9E;
+      line-height: 1.3;
+    }
+
+    /* Device mockup */
+    .hero-mockup {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .mockup-phone {
+      width: min(320px, 90%);
+      aspect-ratio: 9 / 19;
+      background: linear-gradient(160deg, #7C3AED, #5B21B6);
+      border-radius: 36px;
+      padding: 10px;
+      box-shadow:
+        0 30px 60px rgba(124, 58, 237, 0.25),
+        0 0 0 1px rgba(124, 58, 237, 0.15);
+      position: relative;
+    }
+    .mockup-screen {
+      width: 100%;
+      height: 100%;
+      border-radius: 28px;
+      background: #fff;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .mockup-notch {
+      width: 120px; height: 20px;
+      background: #5B21B6;
+      border-radius: 0 0 14px 14px;
+      margin: 0 auto;
+    }
+    .mockup-content {
+      flex: 1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .mockup-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mockup-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #22C55E;
+    }
+    .mockup-header-bar span {
+      font-size: 0.55rem;
+      font-weight: 700;
+      color: #7C3AED;
+      font-family: 'Lora', serif;
+    }
+    .mockup-icon-row {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      margin: 6px 0;
+    }
+    .mockup-icon-row svg {
+      width: 18px; height: 18px;
+      color: #7C3AED;
+    }
+    .mockup-card {
+      background: #FAF5FF;
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mockup-card-bar {
+      width: 6px; height: 24px;
+      border-radius: 3px;
+      background: #22C55E;
+    }
+    .mockup-card-text {
+      flex: 1;
+    }
+    .mockup-card-text .line {
+      height: 5px;
+      border-radius: 3px;
+      background: rgba(124, 58, 237, 0.15);
+      margin-bottom: 4px;
+    }
+    .mockup-card-text .line:last-child { width: 60%; }
+    .mockup-card-text .line.short { width: 40%; }
+
+    .mockup-float-badge {
+      position: absolute;
+      bottom: -10px;
+      right: -10px;
+      background: #22C55E;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 100px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(34, 197, 94, 0.30);
+    }
+
+    /* ===== SCREENSHOTS CAROUSEL ===== */
+    .section-screenshots {
+      padding: 80px 0;
+      scroll-snap-align: start;
+      background: linear-gradient(180deg, #FAF5FF, #F3E8FF, #FAF5FF);
+    }
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(124, 58, 237, 0.08);
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #7C3AED;
+      margin-bottom: 12px;
+    }
+    .section-label svg { width: 14px; height: 14px; }
+    .screenshots-header {
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 48px;
+    }
+    .screenshots-header p {
+      color: #7C4D9E;
+      margin-top: 12px;
+      font-size: 1rem;
+    }
+    .carousel-wrap {
+      position: relative;
+    }
+    .carousel {
+      display: flex;
+      gap: 24px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px 4px 24px;
+      scrollbar-width: thin;
+      scrollbar-color: #7C3AED transparent;
+    }
+    .carousel::-webkit-scrollbar { height: 6px; }
+    .carousel::-webkit-scrollbar-track { background: transparent; }
+    .carousel::-webkit-scrollbar-thumb {
+      background: #7C3AED;
+      border-radius: 3px;
+    }
+    .carousel-item {
+      flex: 0 0 240px;
+      scroll-snap-align: start;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 8px 32px rgba(124, 58, 237, 0.08);
+      transition: transform 250ms, box-shadow 250ms;
+      border: 1px solid rgba(124, 58, 237, 0.06);
+    }
+    .carousel-item:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 48px rgba(124, 58, 237, 0.14);
+    }
+    .carousel-screen {
+      aspect-ratio: 9 / 19;
+      background: linear-gradient(160deg, #7C3AED15, #22C55E10);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .carousel-screen .screen-icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #7C3AED, #22C55E);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+    }
+    .carousel-screen .screen-icon svg { width: 20px; height: 20px; }
+    .carousel-screen h4 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .carousel-screen p {
+      font-size: 0.75rem;
+      color: #7C4D9E;
+      line-height: 1.5;
+    }
+    .carousel-screen .screen-preview {
+      flex: 1;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.5);
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #7C3AED;
+      font-size: 0.65rem;
+      font-weight: 500;
+      border: 1px dashed rgba(124,58,237,0.15);
+    }
+
+    /* ===== FEATURES ===== */
+    .section-features {
+      padding: 80px 0;
+      scroll-snap-align: start;
+      position: relative;
+    }
+    .section-features::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(124,58,237,0.15), transparent);
+    }
+    .features-header {
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 48px;
+    }
+    .features-header p {
+      color: #7C4D9E;
+      margin-top: 12px;
+      font-size: 1rem;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+    }
+    .feature-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 32px 24px;
+      border: 1px solid rgba(124, 58, 237, 0.06);
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.04);
+      transition: transform 250ms, box-shadow 250ms;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 3px;
+      background: linear-gradient(90deg, #7C3AED, #22C55E);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 300ms;
+    }
+    .feature-card:hover::before { transform: scaleX(1); }
+    .feature-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 48px rgba(124, 58, 237, 0.10);
+    }
+    .feature-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .feature-icon svg { width: 26px; height: 26px; }
+    .feature-icon.purple { background: rgba(124, 58, 237, 0.10); color: #7C3AED; }
+    .feature-icon.green { background: rgba(34, 197, 94, 0.10); color: #22C55E; }
+    .feature-icon.mixed { background: linear-gradient(135deg, rgba(124,58,237,0.10), rgba(34,197,94,0.10)); color: #7C3AED; }
+    .feature-card h3 { margin-bottom: 8px; }
+    .feature-card p {
+      color: #7C4D9E;
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+
+    /* ===== REVIEWS ===== */
+    .section-reviews {
+      padding: 80px 0;
+      scroll-snap-align: start;
+      background: #F3E8FF;
+    }
+    .reviews-header {
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 48px;
+    }
+    .reviews-header p {
+      color: #7C4D9E;
+      margin-top: 12px;
+      font-size: 1rem;
+    }
+    .reviews-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .review-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 28px 24px;
+      border: 1px solid rgba(124, 58, 237, 0.06);
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.04);
+      transition: transform 250ms, box-shadow 250ms;
+    }
+    .review-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 36px rgba(124, 58, 237, 0.10);
+    }
+    .review-stars {
+      display: flex;
+      gap: 2px;
+      color: #22C55E;
+      margin-bottom: 12px;
+    }
+    .review-stars svg { width: 16px; height: 16px; fill: #22C55E; }
+    .review-text {
+      font-size: 0.9rem;
+      color: #4C1D95;
+      line-height: 1.7;
+      margin-bottom: 16px;
+      font-style: italic;
+    }
+    .review-author {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .review-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7C3AED, #22C55E);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .review-name {
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .review-name small {
+      display: block;
+      font-weight: 400;
+      color: #7C4D9E;
+      font-size: 0.75rem;
+    }
+
+    /* ===== STATS BANNER ===== */
+    .section-stats {
+      padding: 60px 0;
+      background: linear-gradient(135deg, #7C3AED, #5B21B6);
+      color: #fff;
+      scroll-snap-align: start;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 32px;
+      text-align: center;
+    }
+    .stat-item h3 {
+      font-size: clamp(1.75rem, 3vw, 2.5rem);
+      color: #fff;
+      font-weight: 700;
+    }
+    .stat-item p {
+      font-size: 0.85rem;
+      opacity: 0.8;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+    .stat-divider {
+      width: 1px;
+      background: rgba(255,255,255,0.15);
+    }
+
+    /* ===== FINAL CTA ===== */
+    .section-cta {
+      padding: 100px 0;
+      scroll-snap-align: start;
+      background:
+        radial-gradient(ellipse 600px 400px at 30% 50%, rgba(124, 58, 237, 0.06), transparent),
+        radial-gradient(ellipse 500px 500px at 70% 50%, rgba(34, 197, 94, 0.05), transparent);
+      text-align: center;
+      position: relative;
+    }
+    .cta-content {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .cta-content h2 { margin-bottom: 16px; }
+    .cta-content p {
+      color: #7C4D9E;
+      font-size: 1.05rem;
+      margin-bottom: 32px;
+    }
+    .cta-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    /* ===== FOOTER ===== */
+    .footer {
+      padding: 40px 0 32px;
+      border-top: 1px solid rgba(124, 58, 237, 0.08);
+      background: #FAF5FF;
+    }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 40px;
+    }
+    .footer-brand p {
+      font-size: 0.85rem;
+      color: #7C4D9E;
+      margin-top: 12px;
+      max-width: 280px;
+      line-height: 1.6;
+    }
+    .footer-col h4 {
+      font-family: 'Lora', serif;
+      font-size: 0.95rem;
+      margin-bottom: 16px;
+    }
+    .footer-col a {
+      display: block;
+      font-size: 0.85rem;
+      color: #7C4D9E;
+      margin-bottom: 8px;
+      transition: color 200ms;
+    }
+    .footer-col a:hover { color: #22C55E; }
+    .footer-bottom {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(124, 58, 237, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .footer-bottom p {
+      font-size: 0.8rem;
+      color: #7C4D9E;
+    }
+    .footer-social {
+      display: flex;
+      gap: 12px;
+    }
+    .footer-social a {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: rgba(124, 58, 237, 0.08);
+      display: flex; align-items: center; justify-content: center;
+      color: #7C3AED;
+      transition: background 200ms, color 200ms;
+    }
+    .footer-social a:hover {
+      background: #7C3AED;
+      color: #fff;
+    }
+    .footer-social svg { width: 18px; height: 18px; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      .reviews-grid { grid-template-columns: repeat(2, 1fr); }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .menu-toggle { display: flex; }
+      .hero-grid { grid-template-columns: 1fr; gap: 40px; text-align: center; }
+      .hero-sub { margin-left: auto; margin-right: auto; }
+      .hero-rating { justify-content: center; }
+      .hero-actions { justify-content: center; }
+      .hero-mockup { order: -1; }
+      .features-grid { grid-template-columns: 1fr; }
+      .reviews-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+      .stat-divider { display: none; }
+      .footer-grid { grid-template-columns: 1fr; gap: 24px; }
+      .footer-bottom { flex-direction: column; text-align: center; }
+      .carousel-item { flex: 0 0 200px; }
+    }
+    @media (max-width: 375px) {
+      .container { padding: 0 16px; }
+      .section-hero { padding: 120px 0 60px; }
+      .hero-actions { flex-direction: column; align-items: stretch; }
+      .hero-actions .btn { justify-content: center; }
+      .btn { padding: 12px 24px; }
+      .carousel-item { flex: 0 0 170px; }
+    }
+
+    /* ===== DECORATIVE PATTERNS ===== */
+    .pattern-dots {
+      position: absolute;
+      pointer-events: none;
+      opacity: 0.04;
+    }
+    .pattern-dots-1 {
+      top: 60px; right: 40px;
+      width: 120px; height: 120px;
+      background-image: radial-gradient(#7C3AED 2px, transparent 2px);
+      background-size: 16px 16px;
+    }
+    .pattern-dots-2 {
+      bottom: 40px; left: 40px;
+      width: 80px; height: 80px;
+      background-image: radial-gradient(#22C55E 2px, transparent 2px);
+      background-size: 14px 14px;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    .animate-float {
+      animation: float 4s ease-in-out infinite;
+    }
+
+    /* ===== SCROLL REVEAL ===== */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 600ms ease, transform 600ms ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ===== MOBILE NAV OVERLAY ===== */
+    .mobile-nav {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(250, 245, 255, 0.98);
+      backdrop-filter: blur(16px);
+      padding: 80px 24px 32px;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+    .mobile-nav.open { display: flex; }
+    .mobile-nav a {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #4C1D95;
+    }
+    .mobile-nav .btn { width: 100%; justify-content: center; }
+    .mobile-close {
+      position: absolute;
+      top: 16px; right: 16px;
+      background: none; border: none;
+      padding: 8px;
+      color: #4C1D95;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== MOBILE NAV ===== -->
+  <div class="mobile-nav" id="mobileNav">
+    <button class="mobile-close" onclick="closeMobileNav()" aria-label="Close navigation menu">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <a href="#features" onclick="closeMobileNav()">Features</a>
+    <a href="#reviews" onclick="closeMobileNav()">Reviews</a>
+    <a href="#download" class="btn btn-primary" onclick="closeMobileNav()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download
+    </a>
+  </div>
+
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <div class="container header-inner">
+      <a href="#" class="logo">
+        <span class="logo-icon">AG</span>
+        AL ISLAH
+      </a>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#reviews">Reviews</a>
+        <a href="#download" class="nav-download">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </a>
+      </nav>
+      <button class="menu-toggle" onclick="openMobileNav()" aria-label="Open navigation menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== HERO ===== -->
+  <section class="section-hero" id="hero">
+    <div class="pattern-dots pattern-dots-1"></div>
+    <div class="pattern-dots pattern-dots-2"></div>
+    <div class="container">
+      <div class="hero-grid">
+        <div class="hero-text">
+          <div class="hero-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Premium Islamic Lifestyle
+          </div>
+          <h1 class="hero-title">Your Journey to <span>Premium Green</span> Living</h1>
+          <p class="hero-sub">Discover a mindful way to integrate Islamic values with sustainable, eco-conscious living. Prayers, reminders, green tips &amp; community — all in one app.</p>
+          <div class="hero-rating">
+            <div class="hero-stars">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <span class="hero-rating-text">4.9 <small>&middot; 12,500+ reviews</small></span>
+          </div>
+          <div class="hero-actions">
+            <a href="#download" class="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download Now
+            </a>
+            <a href="#features" class="btn btn-secondary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Watch Demo
+            </a>
+            <div class="hero-qr">
+              <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" fill="white" rx="4"/>
+                <rect x="4" y="4" width="12" height="12" fill="#4C1D95" rx="1"/>
+                <rect x="20" y="4" width="4" height="4" fill="#4C1D95"/>
+                <rect x="28" y="4" width="8" height="4" fill="#4C1D95"/>
+                <rect x="4" y="20" width="4" height="4" fill="#4C1D95"/>
+                <rect x="12" y="20" width="4" height="4" fill="#4C1D95"/>
+                <rect x="20" y="12" width="4" height="4" fill="#4C1D95"/>
+                <rect x="28" y="12" width="4" height="4" fill="#4C1D95"/>
+                <rect x="28" y="20" width="4" height="4" fill="#4C1D95"/>
+                <rect x="8" y="28" width="4" height="8" fill="#4C1D95"/>
+                <rect x="16" y="28" width="4" height="4" fill="#4C1D95"/>
+                <rect x="24" y="28" width="4" height="4" fill="#4C1D95"/>
+                <rect x="32" y="28" width="4" height="4" fill="#4C1D95"/>
+                <rect x="16" y="36" width="4" height="4" fill="#4C1D95"/>
+                <rect x="32" y="36" width="4" height="4" fill="#4C1D95"/>
+                <rect x="28" y="32" width="4" height="4" fill="#4C1D95"/>
+              </svg>
+              <span class="hero-qr-text">Scan to<br>download</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero-mockup">
+          <div class="mockup-phone animate-float">
+            <div class="mockup-screen">
+              <div class="mockup-notch"></div>
+              <div class="mockup-content">
+                <div class="mockup-header-bar">
+                  <span>AL ISLAH</span>
+                  <div class="mockup-dot"></div>
+                </div>
+                <div class="mockup-icon-row">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                </div>
+                <div class="mockup-card">
+                  <div class="mockup-card-bar"></div>
+                  <div class="mockup-card-text">
+                    <div class="line"></div>
+                    <div class="line short"></div>
+                  </div>
+                </div>
+                <div class="mockup-card">
+                  <div class="mockup-card-bar" style="background:#7C3AED;"></div>
+                  <div class="mockup-card-text">
+                    <div class="line"></div>
+                    <div class="line short"></div>
+                  </div>
+                </div>
+                <div class="mockup-card">
+                  <div class="mockup-card-bar" style="background:#7C3AED;"></div>
+                  <div class="mockup-card-text">
+                    <div class="line"></div>
+                    <div class="line short"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mockup-float-badge">4.9 ★</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SCREENSHOTS CAROUSEL ===== -->
+  <section class="section-screenshots" id="screenshots">
+    <div class="container">
+      <div class="screenshots-header reveal">
+        <div class="section-label">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          App Screens
+        </div>
+        <h2>Beautifully crafted for your daily life</h2>
+        <p>Every screen is designed to bring peace, purpose, and sustainability to your routine.</p>
+      </div>
+      <div class="carousel-wrap reveal">
+        <div class="carousel">
+          <div class="carousel-item">
+            <div class="carousel-screen">
+              <div class="screen-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+              <h4>Prayer Times</h4>
+              <p>Accurate schedules with beautiful notifications &amp; Qibla direction.</p>
+              <div class="screen-preview">Preview</div>
+            </div>
+          </div>
+          <div class="carousel-item">
+            <div class="carousel-screen">
+              <div class="screen-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+              <h4>Green Tips</h4>
+              <p>Daily eco-conscious habits rooted in Islamic teachings.</p>
+              <div class="screen-preview">Preview</div>
+            </div>
+          </div>
+          <div class="carousel-item">
+            <div class="carousel-screen">
+              <div class="screen-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+              <h4>Dhikr &amp; Tracker</h4>
+              <p>Beautiful counters for daily athkar with progress insights.</p>
+              <div class="screen-preview">Preview</div>
+            </div>
+          </div>
+          <div class="carousel-item">
+            <div class="carousel-screen">
+              <div class="screen-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+              <h4>Green Community</h4>
+              <p>Connect with like-minded Muslims committed to sustainability.</p>
+              <div class="screen-preview">Preview</div>
+            </div>
+          </div>
+          <div class="carousel-item">
+            <div class="carousel-screen">
+              <div class="screen-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg></div>
+              <h4>Eco Store</h4>
+              <p>Curated sustainable products from ethical Muslim brands.</p>
+              <div class="screen-preview">Preview</div>
+            </div>
+          </div>
+          <div class="carousel-item">
+            <div class="carousel-screen">
+              <div class="screen-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
+              <h4>Zakat Calculator</h4>
+              <p>Easy, accurate Zakat computation with smart nisab updates.</p>
+              <div class="screen-preview">Preview</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FEATURES ===== -->
+  <section class="section-features" id="features">
+    <div class="container">
+      <div class="features-header reveal">
+        <div class="section-label">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Premium Features
+        </div>
+        <h2>Everything you need to live a mindful, green Islamic life</h2>
+        <p>We combine faith, sustainability &amp; technology in one seamless experience.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card reveal">
+          <div class="feature-icon purple">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3>Prayer Times &amp; Qibla</h3>
+          <p>Hyper-local prayer schedules with automatic adjustments and an accurate Qibla compass. Never miss a salah.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon green">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </div>
+          <h3>Sustainable Living Tips</h3>
+          <p>Daily eco-friendly habits inspired by Islamic principles of stewardship (khalifah) and balance (mizan).</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon mixed">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h3>Dhikr &amp; Mindfulness</h3>
+          <p>Track your daily adhkar with elegant counters, progress rings, and gentle reminders throughout the day.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon green">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </div>
+          <h3>Community &amp; Forums</h3>
+          <p>Connect with a global network of Muslims passionate about faith, sustainability, and positive impact.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon purple">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          </div>
+          <h3>Zakat &amp; Charity Tracker</h3>
+          <p>Simplify your Zakat calculation with real-time nisab values and track your sadaqah giving all in one place.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon mixed">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16.24 7.76a6 6 0 0 1 0 8.48m-8.48 0a6 6 0 0 1 0-8.48m2.83 2.83a2 2 0 0 0 0 2.83"/></svg>
+          </div>
+          <h3>Privacy First</h3>
+          <p>Your data stays on your device. End-to-end encryption. No tracking, no ads — just peace of mind.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== REVIEWS ===== -->
+  <section class="section-reviews" id="reviews">
+    <div class="container">
+      <div class="reviews-header reveal">
+        <div class="section-label">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Testimonials
+        </div>
+        <h2>What our users are saying</h2>
+        <p>Join thousands of Muslims who have transformed their daily routine with AL ISLAH Premium Green.</p>
+      </div>
+      <div class="reviews-grid">
+        <div class="review-card reveal">
+          <div class="review-stars">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <p class="review-text">"This app has completely changed my relationship with daily worship. The green tips remind me that caring for the Earth is an act of ibadah. Truly blessed."</p>
+          <div class="review-author">
+            <div class="review-avatar">AM</div>
+            <div class="review-name">Aisha Mohammed <small>Kuala Lumpur, Malaysia</small></div>
+          </div>
+        </div>
+        <div class="review-card reveal">
+          <div class="review-stars">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <p class="review-text">"The Zakat calculator alone is worth it. Accurate nisab values, easy to use, and the sadaqah tracker keeps me consistent. The design is stunning."</p>
+          <div class="review-author">
+            <div class="review-avatar">OK</div>
+            <div class="review-name">Omar Khalid <small>London, UK</small></div>
+          </div>
+        </div>
+        <div class="review-card reveal">
+          <div class="review-stars">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <p class="review-text">"Finally an app that combines deen and sustainability. My kids love the green challenges feature. We've reduced our plastic waste by 60% since joining!"</p>
+          <div class="review-author">
+            <div class="review-avatar">FN</div>
+            <div class="review-name">Fatima Nur <small>Jakarta, Indonesia</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== STATS ===== -->
+  <section class="section-stats">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <h3>12.5K+</h3>
+          <p>Active Users</p>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <h3>4.9★</h3>
+          <p>App Store Rating</p>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <h3>50K+</h3>
+          <p>Prayers Tracked</p>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <h3>150+</h3>
+          <p>Green Tips Shared</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FINAL CTA ===== -->
+  <section class="section-cta" id="download">
+    <div class="container">
+      <div class="cta-content reveal">
+        <div class="section-label" style="margin:0 auto 12px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Get Started Free
+        </div>
+        <h2>Start your Premium Green journey today</h2>
+        <p>Join 12,500+ Muslims who are living a more mindful, sustainable, and connected Islamic life.</p>
+        <div class="cta-actions">
+          <a href="#" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Download for iOS
+          </a>
+          <a href="#" class="btn btn-primary" style="background: linear-gradient(135deg, #7C3AED, #6D28D9); box-shadow: 0 4px 16px rgba(124, 58, 237, 0.35);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            Download for Android
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="logo">
+            <span class="logo-icon">AG</span>
+            AL ISLAH
+          </a>
+          <p>Empowering the global Muslim community to live a life of faith, purpose, and sustainability — one green step at a time.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <a href="#features">Features</a>
+          <a href="#reviews">Reviews</a>
+          <a href="#">Pricing</a>
+          <a href="#">FAQ</a>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="#">About</a>
+          <a href="#">Blog</a>
+          <a href="#">Careers</a>
+          <a href="#">Press Kit</a>
+        </div>
+        <div class="footer-col">
+          <h4>Legal</h4>
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Service</a>
+          <a href="#">Cookie Policy</a>
+          <a href="#">Contact</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 AL ISLAH Premium Green. All rights reserved.</p>
+        <div class="footer-social">
+          <a href="#" aria-label="Twitter / X">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16zM4 20l6.768 -6.768M19.5 4l-6.768 6.768"/></svg>
+          </a>
+          <a href="#" aria-label="Instagram">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5"/></svg>
+          </a>
+          <a href="#" aria-label="Telegram">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 2.8l-18 7.2 5.5 2.5 3.5 6.5 3-3 4 3.5 2-16.7z"/><path d="M10.5 13.5l9-8.5"/></svg>
+          </a>
+          <a href="#" aria-label="YouTube">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2C1 8.25 1 12 1 12s0 3.75.46 5.58a2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2C23 15.75 23 12 23 12s0-3.75-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Mobile nav
+    function openMobileNav() {
+      document.getElementById('mobileNav').classList.add('open');
+    }
+    function closeMobileNav() {
+      document.getElementById('mobileNav').classList.remove('open');
+    }
+
+    // Scroll reveal
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+    // Header background on scroll
+    const header = document.querySelector('.header');
+    let lastScroll = 0;
+    window.addEventListener('scroll', () => {
+      const scroll = window.scrollY;
+      if (scroll > 20) {
+        header.style.background = 'rgba(250, 245, 255, 0.96)';
+        header.style.borderBottomColor = 'rgba(124, 58, 237, 0.15)';
+      } else {
+        header.style.background = 'rgba(250, 245, 255, 0.92)';
+        header.style.borderBottomColor = 'rgba(124, 58, 237, 0.10)';
+      }
+      lastScroll = scroll;
+    });
+  </script>
+</body>
+</html>

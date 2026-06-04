@@ -1,0 +1,2438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AL ISLAH — Learn Arabic & Quranic Knowledge | Premium App</title>
+  <meta name="description" content="AL ISLAH — The premium language learning app for Arabic and Quranic knowledge. Join 500,000+ learners. Available on iOS and Android." />
+  <meta name="theme-color" content="#7C3AED" />
+
+  <!-- Fonts: Lora + Raleway -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* =========================================================
+       DESIGN TOKENS — AL ISLAH Premium Green
+    ========================================================= */
+    :root {
+      --color-primary:    #7C3AED;
+      --color-secondary:  #A78BFA;
+      --color-cta:        #22C55E;
+      --color-cta-dark:   #16A34A;
+      --color-bg:         #FAF5FF;
+      --color-text:       #4C1D95;
+      --color-text-body:  #5B21B6;
+      --color-text-muted: #8B5CF6;
+      --color-surface:    #FFFFFF;
+      --color-border:     #EDE9FE;
+
+      --font-heading: 'Lora', Georgia, serif;
+      --font-body:    'Raleway', sans-serif;
+
+      --space-xs:  0.25rem;
+      --space-sm:  0.5rem;
+      --space-md:  1rem;
+      --space-lg:  1.5rem;
+      --space-xl:  2rem;
+      --space-2xl: 3rem;
+      --space-3xl: 4rem;
+      --space-4xl: 6rem;
+
+      --shadow-sm: 0 1px 2px rgba(124,58,237,0.08);
+      --shadow-md: 0 4px 12px rgba(124,58,237,0.15);
+      --shadow-lg: 0 10px 30px rgba(124,58,237,0.2);
+      --shadow-xl: 0 20px 60px rgba(124,58,237,0.25);
+      --shadow-green: 0 8px 24px rgba(34,197,94,0.3);
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+      --radius-xl: 32px;
+      --radius-pill: 9999px;
+
+      --transition-fast:   150ms ease;
+      --transition-base:   200ms ease;
+      --transition-slow:   300ms ease;
+    }
+
+    /* =========================================================
+       RESET & BASE
+    ========================================================= */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--color-bg);
+      color: var(--color-text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    img { max-width: 100%; display: block; }
+    a { text-decoration: none; color: inherit; }
+    button { border: none; cursor: pointer; font-family: inherit; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* =========================================================
+       ANIMATED BACKGROUND PATTERN
+    ========================================================= */
+    .bg-pattern {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .bg-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.25;
+      animation: orb-float 12s ease-in-out infinite;
+    }
+
+    .bg-orb-1 {
+      width: 600px; height: 600px;
+      background: var(--color-primary);
+      top: -200px; right: -100px;
+      animation-delay: 0s;
+    }
+    .bg-orb-2 {
+      width: 400px; height: 400px;
+      background: var(--color-secondary);
+      bottom: 20%; left: -100px;
+      animation-delay: 4s;
+    }
+    .bg-orb-3 {
+      width: 300px; height: 300px;
+      background: var(--color-cta);
+      bottom: -100px; right: 20%;
+      animation-delay: 8s;
+      opacity: 0.15;
+    }
+
+    @keyframes orb-float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33%       { transform: translate(30px, -40px) scale(1.05); }
+      66%       { transform: translate(-20px, 20px) scale(0.95); }
+    }
+
+    /* =========================================================
+       NAVIGATION
+    ========================================================= */
+    .nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: var(--space-md) var(--space-xl);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(250,245,255,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--color-border);
+      transition: box-shadow var(--transition-base);
+    }
+
+    .nav.scrolled { box-shadow: var(--shadow-md); }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      cursor: pointer;
+    }
+
+    .nav-logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .nav-logo-text {
+      font-family: var(--font-heading);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xl);
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-text-body);
+      transition: color var(--transition-base);
+    }
+
+    .nav-links a:hover { color: var(--color-primary); }
+
+    .nav-cta {
+      background: var(--color-cta);
+      color: white;
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius-pill);
+      font-weight: 600;
+      font-size: 0.875rem;
+      transition: all var(--transition-base);
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      cursor: pointer;
+    }
+
+    .nav-cta:hover {
+      background: var(--color-cta-dark);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-green);
+    }
+
+    .nav-cta:focus-visible {
+      outline: 3px solid var(--color-cta);
+      outline-offset: 2px;
+    }
+
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      padding: var(--space-sm);
+    }
+
+    .hamburger span {
+      width: 22px; height: 2px;
+      background: var(--color-primary);
+      border-radius: 2px;
+      transition: all var(--transition-base);
+    }
+
+    /* =========================================================
+       HERO SECTION
+    ========================================================= */
+    .hero {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3xl);
+      align-items: center;
+      padding: calc(80px + var(--space-3xl)) var(--space-xl) var(--space-3xl);
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      background: linear-gradient(135deg, #EDE9FE, #DDD6FE);
+      border: 1px solid var(--color-border);
+      color: var(--color-primary);
+      padding: 0.375rem 1rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: var(--space-lg);
+    }
+
+    .hero-title {
+      font-family: var(--font-heading);
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      color: var(--color-text);
+      margin-bottom: var(--space-lg);
+    }
+
+    .hero-title .highlight {
+      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-subtitle {
+      font-size: 1.125rem;
+      color: var(--color-text-body);
+      line-height: 1.75;
+      margin-bottom: var(--space-2xl);
+      max-width: 480px;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: var(--space-xl);
+      margin-bottom: var(--space-2xl);
+    }
+
+    .stat {
+      text-align: left;
+    }
+
+    .stat-value {
+      font-family: var(--font-heading);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--color-primary);
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn-download {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: 0.875rem 1.5rem;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      font-size: 0.9375rem;
+      transition: all var(--transition-slow);
+      cursor: pointer;
+    }
+
+    .btn-download:focus-visible {
+      outline: 3px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
+    .btn-ios {
+      background: var(--color-text);
+      color: white;
+    }
+
+    .btn-ios:hover {
+      background: var(--color-primary);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .btn-android {
+      background: var(--color-cta);
+      color: white;
+      box-shadow: var(--shadow-green);
+    }
+
+    .btn-android:hover {
+      background: var(--color-cta-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(34,197,94,0.4);
+    }
+
+    .btn-download svg { flex-shrink: 0; }
+
+    .btn-download-sub {
+      font-size: 0.6875rem;
+      font-weight: 400;
+      opacity: 0.8;
+      display: block;
+    }
+
+    .btn-download-main {
+      font-size: 1rem;
+      font-weight: 700;
+      display: block;
+    }
+
+    /* Hero Rating */
+    .hero-rating {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-top: var(--space-lg);
+    }
+
+    .stars {
+      display: flex;
+      gap: 2px;
+    }
+
+    .star-icon {
+      width: 16px; height: 16px;
+      fill: #F59E0B;
+      color: #F59E0B;
+    }
+
+    .rating-text {
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+
+    /* Hero Device Mockup */
+    .hero-visual {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .device-glow {
+      position: absolute;
+      width: 320px; height: 320px;
+      background: radial-gradient(circle, rgba(124,58,237,0.3) 0%, transparent 70%);
+      border-radius: 50%;
+      animation: pulse-glow 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { transform: scale(1); opacity: 0.6; }
+      50%       { transform: scale(1.1); opacity: 1; }
+    }
+
+    .device-phone {
+      position: relative;
+      width: 280px;
+      background: var(--color-text);
+      border-radius: 44px;
+      padding: 12px;
+      box-shadow: var(--shadow-xl),
+                  0 0 0 2px rgba(124,58,237,0.2),
+                  inset 0 0 0 1px rgba(255,255,255,0.1);
+      animation: float-device 4s ease-in-out infinite;
+    }
+
+    @keyframes float-device {
+      0%, 100% { transform: translateY(0px) rotate(-2deg); }
+      50%       { transform: translateY(-16px) rotate(2deg); }
+    }
+
+    .device-screen {
+      border-radius: 34px;
+      overflow: hidden;
+      background: linear-gradient(160deg, #EDE9FE 0%, #FAF5FF 50%, #DCFCE7 100%);
+      padding: var(--space-lg);
+      min-height: 500px;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .device-notch {
+      width: 100px; height: 28px;
+      background: var(--color-text);
+      border-radius: var(--radius-pill);
+      margin: 0 auto var(--space-md);
+    }
+
+    .device-app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .device-app-logo {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      border-radius: 10px;
+    }
+
+    .device-streak {
+      background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+      border-radius: var(--radius-pill);
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #92400E;
+    }
+
+    .device-lesson-card {
+      background: white;
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .device-lesson-label {
+      font-size: 0.625rem;
+      font-weight: 700;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .device-lesson-title {
+      font-family: var(--font-heading);
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .device-progress-bar {
+      height: 6px;
+      background: var(--color-border);
+      border-radius: var(--radius-pill);
+      margin-top: var(--space-sm);
+      overflow: hidden;
+    }
+
+    .device-progress-fill {
+      height: 100%;
+      width: 65%;
+      background: linear-gradient(90deg, var(--color-primary), var(--color-cta));
+      border-radius: var(--radius-pill);
+      animation: progress-grow 2s ease-out forwards;
+    }
+
+    @keyframes progress-grow {
+      from { width: 0%; }
+      to   { width: 65%; }
+    }
+
+    .device-arabic-text {
+      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      text-align: center;
+      color: white;
+      font-family: 'Lora', serif;
+      font-size: 1.5rem;
+      direction: rtl;
+    }
+
+    .device-arabic-sub {
+      font-size: 0.625rem;
+      opacity: 0.8;
+      margin-top: 4px;
+      direction: ltr;
+      font-family: var(--font-body);
+    }
+
+    .device-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-sm);
+    }
+
+    .device-option {
+      background: white;
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: var(--color-text-body);
+      text-align: center;
+      border: 1.5px solid var(--color-border);
+      cursor: pointer;
+    }
+
+    .device-option.correct {
+      background: #DCFCE7;
+      border-color: var(--color-cta);
+      color: #166534;
+    }
+
+    /* Floating elements */
+    .float-badge {
+      position: absolute;
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: var(--space-sm) var(--space-md);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--color-text);
+      animation: float-badge 3s ease-in-out infinite;
+    }
+
+    .float-badge-1 {
+      top: 10%;
+      right: -20px;
+      animation-delay: 0.5s;
+    }
+
+    .float-badge-2 {
+      bottom: 15%;
+      left: -30px;
+      animation-delay: 1.5s;
+    }
+
+    @keyframes float-badge {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-8px); }
+    }
+
+    .float-badge-icon {
+      width: 32px; height: 32px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .float-badge-icon.green { background: #DCFCE7; }
+    .float-badge-icon.purple { background: #EDE9FE; }
+
+    /* =========================================================
+       SECTION COMMON
+    ========================================================= */
+    .section {
+      padding: var(--space-4xl) var(--space-xl);
+    }
+
+    .section-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      background: linear-gradient(135deg, #EDE9FE, #DDD6FE);
+      color: var(--color-primary);
+      padding: 0.375rem 1rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: var(--space-md);
+    }
+
+    .section-title {
+      font-family: var(--font-heading);
+      font-size: clamp(1.875rem, 3.5vw, 3rem);
+      font-weight: 700;
+      color: var(--color-text);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-md);
+    }
+
+    .section-desc {
+      font-size: 1.0625rem;
+      color: var(--color-text-body);
+      line-height: 1.75;
+      max-width: 560px;
+    }
+
+    .section-header {
+      margin-bottom: var(--space-3xl);
+    }
+
+    .section-header.center {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .section-header.center .section-desc { margin: 0 auto; }
+
+    /* =========================================================
+       SCREENSHOTS CAROUSEL
+    ========================================================= */
+    .screenshots-section {
+      background: linear-gradient(180deg, var(--color-bg) 0%, #F3E8FF 100%);
+      overflow: hidden;
+    }
+
+    .screenshots-track-wrapper {
+      overflow: hidden;
+      position: relative;
+      margin: 0 calc(-1 * var(--space-xl));
+    }
+
+    .screenshots-track {
+      display: flex;
+      gap: var(--space-lg);
+      padding: var(--space-lg) var(--space-xl);
+      scroll-snap-type: x mandatory;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      cursor: grab;
+    }
+
+    .screenshots-track:active { cursor: grabbing; }
+    .screenshots-track::-webkit-scrollbar { display: none; }
+
+    .screenshot-slide {
+      flex: 0 0 220px;
+      scroll-snap-align: center;
+    }
+
+    .screenshot-phone {
+      background: var(--color-text);
+      border-radius: 28px;
+      padding: 8px;
+      box-shadow: var(--shadow-lg);
+      transition: transform var(--transition-slow);
+    }
+
+    .screenshot-phone:hover { transform: translateY(-8px) scale(1.02); }
+
+    .screenshot-inner {
+      border-radius: 22px;
+      overflow: hidden;
+      background: var(--color-bg);
+      height: 380px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Screenshot screen contents */
+    .ss-header {
+      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      padding: var(--space-md);
+      color: white;
+    }
+
+    .ss-header-label {
+      font-size: 0.625rem;
+      opacity: 0.8;
+      font-family: var(--font-body);
+      font-weight: 500;
+    }
+
+    .ss-header-title {
+      font-family: var(--font-heading);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .ss-body { flex: 1; padding: var(--space-md); display: flex; flex-direction: column; gap: var(--space-sm); }
+
+    .ss-card {
+      background: white;
+      border-radius: var(--radius-sm);
+      padding: var(--space-sm) var(--space-md);
+      border-left: 3px solid var(--color-primary);
+      font-size: 0.75rem;
+      color: var(--color-text-body);
+      font-weight: 500;
+    }
+
+    .ss-card.accent { border-left-color: var(--color-cta); }
+    .ss-card.secondary { border-left-color: var(--color-secondary); }
+
+    .ss-arabic {
+      background: linear-gradient(135deg, #EDE9FE, #DDD6FE);
+      border-radius: var(--radius-sm);
+      padding: var(--space-md);
+      text-align: center;
+      font-size: 1.25rem;
+      color: var(--color-primary);
+      direction: rtl;
+      font-family: var(--font-heading);
+    }
+
+    .ss-progress {
+      padding: var(--space-sm) var(--space-md);
+    }
+
+    .ss-progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.625rem;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .ss-progress-track {
+      height: 4px;
+      background: var(--color-border);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+    }
+
+    .ss-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--color-primary), var(--color-cta));
+      border-radius: var(--radius-pill);
+    }
+
+    /* Carousel dots */
+    .carousel-controls {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-sm);
+      margin-top: var(--space-xl);
+    }
+
+    .carousel-dot {
+      width: 8px; height: 8px;
+      border-radius: var(--radius-pill);
+      background: var(--color-border);
+      cursor: pointer;
+      transition: all var(--transition-base);
+      border: none;
+    }
+
+    .carousel-dot.active, .carousel-dot:hover {
+      background: var(--color-primary);
+      width: 24px;
+    }
+
+    .carousel-dot:focus-visible {
+      outline: 3px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
+    /* =========================================================
+       FEATURES SECTION
+    ========================================================= */
+    .features-section { background: var(--color-bg); }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-lg);
+    }
+
+    .feature-card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      padding: var(--space-xl);
+      border: 1px solid var(--color-border);
+      transition: all var(--transition-slow);
+      cursor: default;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(124,58,237,0.05), transparent);
+      opacity: 0;
+      transition: opacity var(--transition-slow);
+    }
+
+    .feature-card:hover { 
+      transform: translateY(-4px); 
+      box-shadow: var(--shadow-lg); 
+      border-color: var(--color-secondary);
+    }
+
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-icon {
+      width: 52px; height: 52px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: var(--space-lg);
+    }
+
+    .feature-icon.purple { background: linear-gradient(135deg, #EDE9FE, #DDD6FE); }
+    .feature-icon.green  { background: linear-gradient(135deg, #DCFCE7, #BBF7D0); }
+    .feature-icon.amber  { background: linear-gradient(135deg, #FEF3C7, #FDE68A); }
+    .feature-icon.blue   { background: linear-gradient(135deg, #DBEAFE, #BFDBFE); }
+    .feature-icon.pink   { background: linear-gradient(135deg, #FCE7F3, #FBCFE8); }
+    .feature-icon.teal   { background: linear-gradient(135deg, #CCFBF1, #99F6E4); }
+
+    .feature-title {
+      font-family: var(--font-heading);
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--color-text);
+      margin-bottom: var(--space-sm);
+    }
+
+    .feature-desc {
+      font-size: 0.9375rem;
+      color: var(--color-text-body);
+      line-height: 1.7;
+    }
+
+    /* =========================================================
+       REVIEWS SECTION
+    ========================================================= */
+    .reviews-section {
+      background: linear-gradient(180deg, #F3E8FF 0%, var(--color-bg) 100%);
+    }
+
+    .reviews-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: var(--space-3xl);
+    }
+
+    .app-rating-display {
+      text-align: right;
+    }
+
+    .rating-big {
+      font-family: var(--font-heading);
+      font-size: 4rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      line-height: 1;
+    }
+
+    .rating-stars-big {
+      display: flex;
+      gap: 3px;
+      justify-content: flex-end;
+      margin: var(--space-sm) 0 var(--space-xs);
+    }
+
+    .rating-count {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+    }
+
+    .reviews-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-lg);
+    }
+
+    .review-card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      padding: var(--space-xl);
+      border: 1px solid var(--color-border);
+      transition: all var(--transition-slow);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .review-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--color-secondary);
+    }
+
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .review-user {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .review-avatar {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 1rem;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .avatar-purple { background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); }
+    .avatar-green  { background: linear-gradient(135deg, #16A34A, var(--color-cta)); }
+    .avatar-amber  { background: linear-gradient(135deg, #D97706, #F59E0B); }
+
+    .review-name {
+      font-weight: 600;
+      font-size: 0.9375rem;
+      color: var(--color-text);
+    }
+
+    .review-platform {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+
+    .review-stars { display: flex; gap: 2px; }
+
+    .review-text {
+      font-size: 0.9375rem;
+      color: var(--color-text-body);
+      line-height: 1.75;
+      font-style: italic;
+    }
+
+    .review-date {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+
+    /* =========================================================
+       DOWNLOAD CTA SECTION
+    ========================================================= */
+    .download-section {
+      background: linear-gradient(135deg, var(--color-primary) 0%, #5B21B6 50%, #4C1D95 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .download-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .download-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.3;
+    }
+
+    .download-orb-1 {
+      width: 400px; height: 400px;
+      background: var(--color-cta);
+      top: -100px; right: -100px;
+    }
+
+    .download-orb-2 {
+      width: 300px; height: 300px;
+      background: var(--color-secondary);
+      bottom: -100px; left: -50px;
+    }
+
+    .download-inner {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .download-label {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      background: rgba(255,255,255,0.15);
+      color: white;
+      padding: 0.375rem 1rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: var(--space-lg);
+    }
+
+    .download-title {
+      font-family: var(--font-heading);
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      font-weight: 700;
+      color: white;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: var(--space-lg);
+    }
+
+    .download-desc {
+      font-size: 1.0625rem;
+      color: rgba(255,255,255,0.8);
+      line-height: 1.75;
+      margin-bottom: var(--space-2xl);
+    }
+
+    .download-buttons {
+      display: flex;
+      gap: var(--space-md);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-store {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: 1rem 1.75rem;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      font-size: 0.9375rem;
+      transition: all var(--transition-slow);
+      cursor: pointer;
+      min-width: 200px;
+    }
+
+    .btn-store:focus-visible {
+      outline: 3px solid white;
+      outline-offset: 2px;
+    }
+
+    .btn-store-ios {
+      background: white;
+      color: var(--color-text);
+    }
+
+    .btn-store-ios:hover {
+      background: var(--color-bg);
+      transform: translateY(-3px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+    }
+
+    .btn-store-android {
+      background: var(--color-cta);
+      color: white;
+    }
+
+    .btn-store-android:hover {
+      background: var(--color-cta-dark);
+      transform: translateY(-3px);
+      box-shadow: 0 16px 48px rgba(34,197,94,0.4);
+    }
+
+    .btn-store-texts { text-align: left; }
+
+    .btn-store-sub  {
+      display: block;
+      font-size: 0.6875rem;
+      font-weight: 400;
+      opacity: 0.7;
+      line-height: 1;
+    }
+
+    .btn-store-main {
+      display: block;
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    /* QR Section */
+    .qr-section {
+      margin-top: var(--space-2xl);
+      display: flex;
+      justify-content: center;
+      gap: var(--space-xl);
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .qr-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .qr-code {
+      width: 100px; height: 100px;
+      background: white;
+      border-radius: var(--radius-md);
+      padding: var(--space-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qr-placeholder {
+      width: 84px; height: 84px;
+      background: linear-gradient(135deg, #EDE9FE, var(--color-border));
+      border-radius: var(--radius-sm);
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      padding: 4px;
+    }
+
+    .qr-cell {
+      border-radius: 1px;
+    }
+
+    .qr-cell.filled { background: var(--color-text); }
+    .qr-cell.empty  { background: transparent; }
+
+    .qr-label {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.7);
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .qr-divider {
+      height: 60px;
+      width: 1px;
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* =========================================================
+       TRUST SECTION
+    ========================================================= */
+    .trust-section {
+      background: var(--color-bg);
+      padding: var(--space-2xl) var(--space-xl);
+    }
+
+    .trust-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: var(--space-xl);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .trust-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+
+    .trust-divider {
+      width: 1px; height: 24px;
+      background: var(--color-border);
+      flex-shrink: 0;
+    }
+
+    .trust-items {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xl);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .trust-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-text-body);
+    }
+
+    .trust-icon {
+      width: 20px; height: 20px;
+      color: var(--color-cta);
+    }
+
+    /* =========================================================
+       FOOTER
+    ========================================================= */
+    .footer {
+      background: var(--color-text);
+      padding: var(--space-3xl) var(--space-xl) var(--space-xl);
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .footer-top {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: var(--space-3xl);
+      margin-bottom: var(--space-3xl);
+    }
+
+    .footer-brand-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+    }
+
+    .footer-logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .footer-logo-text {
+      font-family: var(--font-heading);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: white;
+    }
+
+    .footer-brand-desc {
+      font-size: 0.9375rem;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.75;
+      margin-bottom: var(--space-lg);
+    }
+
+    .footer-social {
+      display: flex;
+      gap: var(--space-sm);
+    }
+
+    .social-btn {
+      width: 40px; height: 40px;
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.6);
+      transition: all var(--transition-base);
+      cursor: pointer;
+    }
+
+    .social-btn:hover {
+      background: var(--color-primary);
+      color: white;
+    }
+
+    .social-btn:focus-visible {
+      outline: 2px solid var(--color-secondary);
+      outline-offset: 2px;
+    }
+
+    .footer-col-title {
+      font-family: var(--font-heading);
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: white;
+      margin-bottom: var(--space-md);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .footer-links {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .footer-links a {
+      font-size: 0.9375rem;
+      color: rgba(255,255,255,0.6);
+      transition: color var(--transition-base);
+      cursor: pointer;
+    }
+
+    .footer-links a:hover { color: var(--color-secondary); }
+
+    .footer-links a:focus-visible {
+      outline: 2px solid var(--color-secondary);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding-top: var(--space-xl);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+    }
+
+    .footer-copy {
+      font-size: 0.875rem;
+      color: rgba(255,255,255,0.4);
+    }
+
+    .footer-badges {
+      display: flex;
+      gap: var(--space-md);
+      align-items: center;
+    }
+
+    .badge-store {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      background: rgba(255,255,255,0.08);
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      color: rgba(255,255,255,0.6);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-base);
+    }
+
+    .badge-store:hover {
+      background: rgba(255,255,255,0.15);
+      color: white;
+    }
+
+    .badge-store:focus-visible {
+      outline: 2px solid var(--color-secondary);
+      outline-offset: 2px;
+    }
+
+    /* =========================================================
+       RESPONSIVE
+    ========================================================= */
+    @media (max-width: 1024px) {
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      .reviews-grid  { grid-template-columns: repeat(2, 1fr); }
+      .footer-top    { grid-template-columns: 1fr 1fr; gap: var(--space-xl); }
+    }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+
+      .hero {
+        grid-template-columns: 1fr;
+        text-align: center;
+        padding-top: calc(80px + var(--space-2xl));
+        gap: var(--space-2xl);
+      }
+
+      .hero-subtitle { margin: 0 auto var(--space-xl); }
+      .hero-stats    { justify-content: center; }
+      .hero-buttons  { justify-content: center; }
+      .hero-rating   { justify-content: center; }
+      .hero-visual   { order: -1; }
+
+      .device-phone { width: 220px; }
+      .float-badge-1, .float-badge-2 { display: none; }
+
+      .features-grid { grid-template-columns: 1fr; }
+      .reviews-header { flex-direction: column; gap: var(--space-md); align-items: flex-start; }
+      .app-rating-display { text-align: left; }
+      .rating-stars-big { justify-content: flex-start; }
+      .reviews-grid  { grid-template-columns: 1fr; }
+
+      .footer-top    { grid-template-columns: 1fr; gap: var(--space-xl); }
+      .footer-bottom { flex-direction: column; text-align: center; }
+    }
+
+    @media (max-width: 375px) {
+      .hero-title   { font-size: 2rem; }
+      .hero-buttons { flex-direction: column; align-items: stretch; }
+      .btn-download { justify-content: center; }
+      .download-buttons { flex-direction: column; align-items: center; }
+      .btn-store { min-width: 260px; }
+    }
+
+    /* =========================================================
+       SCROLL ANIMATIONS
+    ========================================================= */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+    .reveal-delay-5 { transition-delay: 0.5s; }
+  </style>
+</head>
+<body>
+
+  <!-- Background animated orbs -->
+  <div class="bg-pattern" aria-hidden="true">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+  </div>
+
+  <!-- ========================================================
+       NAVIGATION
+  ======================================================== -->
+  <nav class="nav" id="main-nav" role="navigation" aria-label="Main navigation">
+    <a class="nav-logo" href="#" aria-label="AL ISLAH Home">
+      <div class="nav-logo-icon" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <span class="nav-logo-text">AL ISLAH</span>
+    </a>
+
+    <ul class="nav-links" role="list">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#screenshots">Screenshots</a></li>
+      <li><a href="#reviews">Reviews</a></li>
+      <li><a href="#download">Download</a></li>
+    </ul>
+
+    <a href="#download" class="nav-cta" id="nav-cta-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Get the App
+    </a>
+
+    <button class="hamburger" id="hamburger-btn" aria-label="Toggle navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+
+  <!-- ========================================================
+       HERO
+  ======================================================== -->
+  <section class="hero" id="hero" aria-labelledby="hero-title">
+    <div class="hero-content">
+      <div class="hero-badge" role="note">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        </svg>
+        #1 Arabic Learning App · 500K+ Learners
+      </div>
+
+      <h1 class="hero-title" id="hero-title">
+        Master Arabic &<br/>
+        <span class="highlight">Quranic Knowledge</span><br/>
+        with Confidence
+      </h1>
+
+      <p class="hero-subtitle">
+        AL ISLAH blends structured language learning with authentic Quranic study — beautifully designed, progressively paced, and always with you.
+      </p>
+
+      <div class="hero-stats" role="list" aria-label="App statistics">
+        <div class="stat" role="listitem">
+          <div class="stat-value">500K+</div>
+          <div class="stat-label">Active Learners</div>
+        </div>
+        <div class="stat" role="listitem">
+          <div class="stat-value">4.8★</div>
+          <div class="stat-label">App Store Rating</div>
+        </div>
+        <div class="stat" role="listitem">
+          <div class="stat-value">1,200+</div>
+          <div class="stat-label">Lessons Available</div>
+        </div>
+      </div>
+
+      <div class="hero-buttons">
+        <a href="#download" class="btn-download btn-ios" id="hero-ios-btn" role="button">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+          </svg>
+          <span>
+            <span class="btn-download-sub">Download on the</span>
+            <span class="btn-download-main">App Store</span>
+          </span>
+        </a>
+
+        <a href="#download" class="btn-download btn-android" id="hero-android-btn" role="button">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M17.523 15.341l-.891-1.54A6.98 6.98 0 0019 9H5a6.98 6.98 0 002.368 4.801l-.891 1.54A1 1 0 007.606 16.5l.812-1.405A6.96 6.96 0 0012 16c1.41 0 2.72-.418 3.82-1.133l.814 1.408a1 1 0 001.738-.994zM8.5 6a.5.5 0 110-1 .5.5 0 010 1zm7 0a.5.5 0 110-1 .5.5 0 010 1zM3 9a9 9 0 0118 0 9 9 0 01-18 0zm6.5-5.33L8.086 2.257A1 1 0 016.5 3v1h1v.67zm4 0V4h1V3a1 1 0 00-1.586-.743L12.5 3.67z"/>
+          </svg>
+          <span>
+            <span class="btn-download-sub">Get it on</span>
+            <span class="btn-download-main">Google Play</span>
+          </span>
+        </a>
+      </div>
+
+      <div class="hero-rating" aria-label="App rating: 4.8 out of 5 stars from 120,000 reviews">
+        <div class="stars" aria-hidden="true">
+          <svg class="star-icon" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg class="star-icon" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg class="star-icon" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg class="star-icon" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg class="star-icon" viewBox="0 0 24 24" style="opacity:0.6"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
+        <span class="rating-text"><strong>4.8</strong> from 120,000+ reviews</span>
+      </div>
+    </div>
+
+    <!-- Device Mockup -->
+    <div class="hero-visual" aria-hidden="true">
+      <div class="device-glow"></div>
+      <div class="device-phone" role="img" aria-label="AL ISLAH app on iPhone showing Arabic lesson">
+        <div class="device-screen">
+          <div class="device-notch"></div>
+
+          <div class="device-app-header">
+            <div class="device-app-logo"></div>
+            <div class="device-streak">🔥 14 Day Streak</div>
+          </div>
+
+          <div class="device-lesson-card">
+            <div class="device-lesson-label">Today's Lesson</div>
+            <div class="device-lesson-title">The Definite Article (ال)</div>
+            <div class="device-progress-bar">
+              <div class="device-progress-fill"></div>
+            </div>
+          </div>
+
+          <div class="device-arabic-text">
+            البَيْتُ الكَبِيرُ
+            <div class="device-arabic-sub">The Big House</div>
+          </div>
+
+          <div class="device-options">
+            <div class="device-option correct">الكبير</div>
+            <div class="device-option">كبير</div>
+            <div class="device-option">البيت</div>
+            <div class="device-option">الكريم</div>
+          </div>
+
+          <div class="ss-progress">
+            <div class="ss-progress-label">
+              <span>Daily Goal</span><span>65%</span>
+            </div>
+            <div class="ss-progress-track">
+              <div class="ss-progress-fill" style="width:65%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating badges -->
+      <div class="float-badge float-badge-1">
+        <div class="float-badge-icon green">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:var(--color-text-muted);font-weight:500">Streak</div>
+          <div style="font-size:0.9375rem;color:var(--color-text);font-weight:700">14 Days</div>
+        </div>
+      </div>
+
+      <div class="float-badge float-badge-2">
+        <div class="float-badge-icon purple">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+            <path d="M16 3.13a4 4 0 010 7.75"/>
+          </svg>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:var(--color-text-muted);font-weight:500">Community</div>
+          <div style="font-size:0.9375rem;color:var(--color-text);font-weight:700">500K+ Learners</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       TRUST BAR
+  ======================================================== -->
+  <div class="trust-section" role="complementary" aria-label="Trust indicators">
+    <div class="trust-inner">
+      <span class="trust-label">Trusted By</span>
+      <div class="trust-divider" aria-hidden="true"></div>
+      <div class="trust-items">
+        <div class="trust-item">
+          <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          App Store Editor's Choice
+        </div>
+        <div class="trust-item">
+          <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          4.8★ Average Rating
+        </div>
+        <div class="trust-item">
+          <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+            <path d="M16 3.13a4 4 0 010 7.75"/>
+          </svg>
+          500K+ Active Users
+        </div>
+        <div class="trust-item">
+          <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Daily Updates & Lessons
+        </div>
+        <div class="trust-item">
+          <svg class="trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          Scholar-Verified Content
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       SCREENSHOTS CAROUSEL
+  ======================================================== -->
+  <section class="section screenshots-section" id="screenshots" aria-labelledby="screenshots-title">
+    <div class="section-inner">
+      <div class="section-header center">
+        <div class="section-label">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          App Screenshots
+        </div>
+        <h2 class="section-title" id="screenshots-title">
+          Beautiful by Design,<br/>Powerful by Purpose
+        </h2>
+        <p class="section-desc">
+          Every screen crafted to make learning Arabic feel effortless and enjoyable. Swipe to explore the full experience.
+        </p>
+      </div>
+    </div>
+
+    <div class="screenshots-track-wrapper" aria-label="App screenshots carousel">
+      <div class="screenshots-track" id="screenshots-track" role="list">
+        <!-- Screenshot 1: Dashboard -->
+        <div class="screenshot-slide reveal" role="listitem" aria-label="Dashboard screen">
+          <div class="screenshot-phone">
+            <div class="screenshot-inner">
+              <div class="ss-header">
+                <div class="ss-header-label">Good Morning!</div>
+                <div class="ss-header-title">Your Dashboard</div>
+              </div>
+              <div class="ss-body">
+                <div class="ss-card">
+                  <div style="font-size:0.6rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;">Today's Goal</div>
+                  <div style="font-weight:700;margin-top:2px;">3 Lessons Complete</div>
+                </div>
+                <div class="ss-arabic">بِسْمِ اللهِ</div>
+                <div class="ss-progress">
+                  <div class="ss-progress-label"><span>Weekly XP</span><span>1,240</span></div>
+                  <div class="ss-progress-track"><div class="ss-progress-fill" style="width:72%"></div></div>
+                </div>
+                <div class="ss-card accent">
+                  <div style="font-size:0.6rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;">Streak</div>
+                  <div style="font-weight:700;margin-top:2px;color:#15803D;">🔥 14 Days Running</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screenshot 2: Lesson -->
+        <div class="screenshot-slide reveal reveal-delay-1" role="listitem" aria-label="Lesson screen">
+          <div class="screenshot-phone">
+            <div class="screenshot-inner">
+              <div class="ss-header" style="background:linear-gradient(135deg,#16A34A,#22C55E)">
+                <div class="ss-header-label">Chapter 4 · Lesson 2</div>
+                <div class="ss-header-title">Verb Conjugation</div>
+              </div>
+              <div class="ss-body">
+                <div class="ss-arabic">كَتَبَ</div>
+                <div style="font-size:0.75rem;color:var(--color-text-muted);font-weight:600;text-align:center;padding:4px 0">He wrote</div>
+                <div class="ss-card">
+                  <div style="font-size:0.6rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;">Root</div>
+                  <div style="font-weight:700;margin-top:2px;direction:rtl;font-size:1rem;">ك - ت - ب</div>
+                </div>
+                <div class="ss-card secondary">
+                  <div style="font-size:0.6rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;">Pattern</div>
+                  <div style="font-weight:700;margin-top:2px;">فَعَلَ (Past tense)</div>
+                </div>
+                <div class="ss-progress">
+                  <div class="ss-progress-label"><span>Lesson Progress</span><span>3/7</span></div>
+                  <div class="ss-progress-track"><div class="ss-progress-fill" style="width:43%"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screenshot 3: Quran Mode -->
+        <div class="screenshot-slide reveal reveal-delay-2" role="listitem" aria-label="Quran mode screen">
+          <div class="screenshot-phone">
+            <div class="screenshot-inner">
+              <div class="ss-header" style="background:linear-gradient(135deg,#4C1D95,#7C3AED)">
+                <div class="ss-header-label">Quran Mode</div>
+                <div class="ss-header-title">Al-Fatiha · Ayah 1</div>
+              </div>
+              <div class="ss-body">
+                <div class="ss-arabic" style="font-size:1.1rem;line-height:1.8;">
+                  بِسْمِ ٱللَّهِ<br/>ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+                </div>
+                <div class="ss-card">
+                  <div style="font-size:0.6rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;">Word Analysis</div>
+                  <div style="font-weight:600;margin-top:4px;font-size:0.75rem;">بِسْمِ = "In the name of"</div>
+                  <div style="font-weight:600;font-size:0.75rem;">ٱللَّهِ = "Allah"</div>
+                </div>
+                <div class="ss-card accent">
+                  <div style="font-size:0.6rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;">Translation</div>
+                  <div style="font-weight:600;margin-top:4px;font-size:0.75rem;">In the name of Allah, the Entirely Merciful</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screenshot 4: Vocabulary -->
+        <div class="screenshot-slide reveal reveal-delay-3" role="listitem" aria-label="Vocabulary screen">
+          <div class="screenshot-phone">
+            <div class="screenshot-inner">
+              <div class="ss-header" style="background:linear-gradient(135deg,#D97706,#F59E0B)">
+                <div class="ss-header-label">Flashcards</div>
+                <div class="ss-header-title">Daily Vocabulary</div>
+              </div>
+              <div class="ss-body">
+                <div class="ss-arabic" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);color:#92400E;font-size:1.75rem">
+                  مَاءٌ
+                </div>
+                <div style="font-size:0.75rem;color:var(--color-text-muted);font-weight:600;text-align:center;padding:4px 0">Water · Noun · Masc.</div>
+                <div class="ss-card">
+                  <div style="font-size:0.6rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;">Example Sentence</div>
+                  <div style="font-weight:600;margin-top:4px;font-size:0.8rem;direction:rtl;">شَرِبْتُ الْمَاءَ</div>
+                  <div style="font-size:0.7rem;color:var(--color-text-muted);margin-top:2px;">I drank the water</div>
+                </div>
+                <div class="ss-progress">
+                  <div class="ss-progress-label"><span>Mastered</span><span>48/80</span></div>
+                  <div class="ss-progress-track"><div class="ss-progress-fill" style="width:60%"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screenshot 5: Progress -->
+        <div class="screenshot-slide reveal reveal-delay-4" role="listitem" aria-label="Progress screen">
+          <div class="screenshot-phone">
+            <div class="screenshot-inner">
+              <div class="ss-header">
+                <div class="ss-header-label">Your Journey</div>
+                <div class="ss-header-title">Progress Overview</div>
+              </div>
+              <div class="ss-body">
+                <div class="ss-card accent" style="text-align:center;padding:var(--space-md)">
+                  <div style="font-family:var(--font-heading);font-size:2rem;font-weight:700;color:#15803D;">Level 7</div>
+                  <div style="font-size:0.7rem;color:var(--color-text-muted);font-weight:600;text-transform:uppercase;margin-top:2px;">Intermediate</div>
+                </div>
+                <div class="ss-card">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font-size:0.75rem;font-weight:600">Vocabulary</span>
+                    <span style="font-size:0.75rem;color:var(--color-cta);font-weight:700">312 words</span>
+                  </div>
+                  <div class="ss-progress-track" style="margin-top:6px"><div class="ss-progress-fill" style="width:78%"></div></div>
+                </div>
+                <div class="ss-card secondary">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font-size:0.75rem;font-weight:600">Grammar</span>
+                    <span style="font-size:0.75rem;color:var(--color-secondary);font-weight:700">54%</span>
+                  </div>
+                  <div class="ss-progress-track" style="margin-top:6px"><div class="ss-progress-fill" style="width:54%"></div></div>
+                </div>
+                <div class="ss-card">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font-size:0.75rem;font-weight:600">Quran</span>
+                    <span style="font-size:0.75rem;color:var(--color-primary);font-weight:700">2 Juz</span>
+                  </div>
+                  <div class="ss-progress-track" style="margin-top:6px"><div class="ss-progress-fill" style="width:35%"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="carousel-controls" role="tablist" aria-label="Screenshot navigation">
+      <button class="carousel-dot active" id="dot-0" role="tab" aria-selected="true" aria-label="Go to slide 1"></button>
+      <button class="carousel-dot" id="dot-1" role="tab" aria-selected="false" aria-label="Go to slide 2"></button>
+      <button class="carousel-dot" id="dot-2" role="tab" aria-selected="false" aria-label="Go to slide 3"></button>
+      <button class="carousel-dot" id="dot-3" role="tab" aria-selected="false" aria-label="Go to slide 4"></button>
+      <button class="carousel-dot" id="dot-4" role="tab" aria-selected="false" aria-label="Go to slide 5"></button>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       FEATURES
+  ======================================================== -->
+  <section class="section features-section" id="features" aria-labelledby="features-title">
+    <div class="section-inner">
+      <div class="section-header">
+        <div class="section-label">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          Why AL ISLAH
+        </div>
+        <h2 class="section-title" id="features-title">
+          Everything You Need to<br/>Learn Arabic Deeply
+        </h2>
+        <p class="section-desc">
+          From beginner alphabets to advanced Quranic grammar — we've built every tool to make your Arabic journey complete.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <article class="feature-card reveal" aria-labelledby="feat-1-title">
+          <div class="feature-icon purple" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+            </svg>
+          </div>
+          <h3 class="feature-title" id="feat-1-title">Structured Curriculum</h3>
+          <p class="feature-desc">1,200+ bite-sized lessons organized into a scientifically sequenced curriculum from zero to fluency — with no gaps.</p>
+        </article>
+
+        <!-- Feature 2 -->
+        <article class="feature-card reveal reveal-delay-1" aria-labelledby="feat-2-title">
+          <div class="feature-icon green" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 8v4l3 3"/>
+            </svg>
+          </div>
+          <h3 class="feature-title" id="feat-2-title">Spaced Repetition</h3>
+          <p class="feature-desc">Our AI-powered SRS system ensures you review vocabulary at the perfect moment — maximizing retention with minimal time.</p>
+        </article>
+
+        <!-- Feature 3 -->
+        <article class="feature-card reveal reveal-delay-2" aria-labelledby="feat-3-title">
+          <div class="feature-icon amber" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+              <path d="M2 12h20"/>
+              <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+            </svg>
+          </div>
+          <h3 class="feature-title" id="feat-3-title">Quranic Integration</h3>
+          <p class="feature-desc">Every Ayah unlocked word by word. Study grammar directly from the Quran with scholar-verified tafsir and word analysis.</p>
+        </article>
+
+        <!-- Feature 4 -->
+        <article class="feature-card reveal reveal-delay-1" aria-labelledby="feat-4-title">
+          <div class="feature-icon blue" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+              <path d="M16 3.13a4 4 0 010 7.75"/>
+            </svg>
+          </div>
+          <h3 class="feature-title" id="feat-4-title">Live Community</h3>
+          <p class="feature-desc">Join 500K+ learners worldwide. Practice with native speakers, join study circles, and celebrate milestones together.</p>
+        </article>
+
+        <!-- Feature 5 -->
+        <article class="feature-card reveal reveal-delay-2" aria-labelledby="feat-5-title">
+          <div class="feature-icon pink" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#DB2777" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18V5l12-2v13"/>
+              <circle cx="6" cy="18" r="3"/>
+              <circle cx="18" cy="16" r="3"/>
+            </svg>
+          </div>
+          <h3 class="feature-title" id="feat-5-title">Audio Pronunciation</h3>
+          <p class="feature-desc">Record and compare your pronunciation with native speakers. Makharij-accurate audio for every word and letter.</p>
+        </article>
+
+        <!-- Feature 6 -->
+        <article class="feature-card reveal reveal-delay-3" aria-labelledby="feat-6-title">
+          <div class="feature-icon teal" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </div>
+          <h3 class="feature-title" id="feat-6-title">Smart Progress Tracking</h3>
+          <p class="feature-desc">Detailed analytics show your strengths and gaps. Personalized insights help you focus where it matters most.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       REVIEWS
+  ======================================================== -->
+  <section class="section reviews-section" id="reviews" aria-labelledby="reviews-title">
+    <div class="section-inner">
+      <div class="reviews-header">
+        <div>
+          <div class="section-label">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+            </svg>
+            Learner Reviews
+          </div>
+          <h2 class="section-title" id="reviews-title">What Our Community Says</h2>
+          <p class="section-desc">Real reviews from 120,000+ app store ratings</p>
+        </div>
+
+        <div class="app-rating-display" aria-label="Overall rating: 4.8 out of 5">
+          <div class="rating-big">4.8</div>
+          <div class="rating-stars-big" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#F59E0B" opacity="0.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <div class="rating-count">Based on 120,000+ ratings</div>
+        </div>
+      </div>
+
+      <div class="reviews-grid">
+        <!-- Review 1 -->
+        <article class="review-card reveal" aria-labelledby="review-1-name">
+          <div class="review-header">
+            <div class="review-user">
+              <div class="review-avatar avatar-purple" aria-hidden="true">A</div>
+              <div>
+                <div class="review-name" id="review-1-name">Ahmad Al-Rashid</div>
+                <div class="review-platform">App Store · United Kingdom</div>
+              </div>
+            </div>
+            <div class="review-stars" aria-label="5 out of 5 stars">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+          </div>
+          <p class="review-text">"I've tried four other Arabic apps and none come close. AL ISLAH actually explains the grammar in depth and the Quran integration is unlike anything I've seen. 6 months in and I'm reading Surah Al-Baqarah with understanding."</p>
+          <div class="review-date">December 2024 · App Store</div>
+        </article>
+
+        <!-- Review 2 -->
+        <article class="review-card reveal reveal-delay-1" aria-labelledby="review-2-name">
+          <div class="review-header">
+            <div class="review-user">
+              <div class="review-avatar avatar-green" aria-hidden="true">S</div>
+              <div>
+                <div class="review-name" id="review-2-name">Sana Mahmoud</div>
+                <div class="review-platform">Google Play · Canada</div>
+              </div>
+            </div>
+            <div class="review-stars" aria-label="5 out of 5 stars">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+          </div>
+          <p class="review-text">"As a non-Arab Muslim, this app has been life-changing. The pronunciation guides are incredible and the community feature helped me find study partners in my city. I now lead a halaqa for beginners!"</p>
+          <div class="review-date">November 2024 · Google Play</div>
+        </article>
+
+        <!-- Review 3 -->
+        <article class="review-card reveal reveal-delay-2" aria-labelledby="review-3-name">
+          <div class="review-header">
+            <div class="review-user">
+              <div class="review-avatar avatar-amber" aria-hidden="true">Y</div>
+              <div>
+                <div class="review-name" id="review-3-name">Yusuf Ibrahim</div>
+                <div class="review-platform">App Store · United States</div>
+              </div>
+            </div>
+            <div class="review-stars" aria-label="5 out of 5 stars">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B" opacity="0.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+          </div>
+          <p class="review-text">"The spaced repetition algorithm is genuinely impressive. I've maintained a 47-day streak and retained over 400 words. The design is also stunning — feels premium without the premium price tag."</p>
+          <div class="review-date">October 2024 · App Store</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       DOWNLOAD CTA
+  ======================================================== -->
+  <section class="section download-section" id="download" aria-labelledby="download-title">
+    <div class="download-orb download-orb-1" aria-hidden="true"></div>
+    <div class="download-orb download-orb-2" aria-hidden="true"></div>
+
+    <div class="download-inner reveal">
+      <div class="download-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Start Your Journey Today
+      </div>
+
+      <h2 class="download-title" id="download-title">
+        Begin Learning Arabic<br/>
+        <span style="color:#A5F3C3;">in 5 Minutes</span>
+      </h2>
+
+      <p class="download-desc">
+        Free to download. Learn at your pace. Join 500,000+ learners who've already transformed their relationship with the Arabic language and the Quran.
+      </p>
+
+      <div class="download-buttons">
+        <a href="#" class="btn-store btn-store-ios" id="download-ios-btn" role="button" aria-label="Download AL ISLAH on the App Store">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+          </svg>
+          <div class="btn-store-texts">
+            <span class="btn-store-sub">Download on the</span>
+            <span class="btn-store-main">App Store</span>
+          </div>
+        </a>
+
+        <a href="#" class="btn-store btn-store-android" id="download-android-btn" role="button" aria-label="Get AL ISLAH on Google Play">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+            <path d="M3.18 23.81C2.44 23.4 2 22.62 2 21.74V2.26C2 1.38 2.44.6 3.18.19L13.39 12 3.18 23.81zm17.16-10.3L17.6 15 14.98 12l2.62-3 2.74 1.72c.78.49.78 1.59 0 2.79zm-7.2 7.13L12 19.5 3.75 12 12 4.5l1.14.36L7.5 12l5.64 8.64z"/>
+          </svg>
+          <div class="btn-store-texts">
+            <span class="btn-store-sub">Get it on</span>
+            <span class="btn-store-main">Google Play</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- QR Codes -->
+      <div class="qr-section" aria-label="Scan QR codes to download">
+        <div class="qr-item">
+          <div class="qr-code" aria-label="QR code for App Store download">
+            <!-- Simplified QR pattern representation -->
+            <svg width="84" height="84" viewBox="0 0 84 84" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="0" y="0" width="84" height="84" fill="white"/>
+              <!-- Top-left finder -->
+              <rect x="4" y="4" width="28" height="28" rx="3" fill="#4C1D95"/>
+              <rect x="10" y="10" width="16" height="16" rx="1" fill="white"/>
+              <rect x="14" y="14" width="8" height="8" rx="1" fill="#4C1D95"/>
+              <!-- Top-right finder -->
+              <rect x="52" y="4" width="28" height="28" rx="3" fill="#4C1D95"/>
+              <rect x="58" y="10" width="16" height="16" rx="1" fill="white"/>
+              <rect x="62" y="14" width="8" height="8" rx="1" fill="#4C1D95"/>
+              <!-- Bottom-left finder -->
+              <rect x="4" y="52" width="28" height="28" rx="3" fill="#4C1D95"/>
+              <rect x="10" y="58" width="16" height="16" rx="1" fill="white"/>
+              <rect x="14" y="62" width="8" height="8" rx="1" fill="#4C1D95"/>
+              <!-- Data modules -->
+              <rect x="36" y="4" width="8" height="8" rx="1" fill="#4C1D95"/>
+              <rect x="36" y="16" width="8" height="8" rx="1" fill="#7C3AED"/>
+              <rect x="36" y="28" width="8" height="8" rx="1" fill="#4C1D95"/>
+              <rect x="4" y="36" width="8" height="8" rx="1" fill="#7C3AED"/>
+              <rect x="16" y="36" width="8" height="8" rx="1" fill="#4C1D95"/>
+              <rect x="28" y="36" width="8" height="8" rx="1" fill="#A78BFA"/>
+              <rect x="40" y="36" width="8" height="8" rx="1" fill="#4C1D95"/>
+              <rect x="52" y="36" width="8" height="8" rx="1" fill="#7C3AED"/>
+              <rect x="64" y="36" width="8" height="8" rx="1" fill="#4C1D95"/>
+              <rect x="76" y="36" width="4" height="8" rx="1" fill="#A78BFA"/>
+              <rect x="36" y="40" width="8" height="8" rx="1" fill="#22C55E"/>
+              <rect x="48" y="52" width="8" height="8" rx="1" fill="#4C1D95"/>
+              <rect x="60" y="52" width="8" height="8" rx="1" fill="#7C3AED"/>
+              <rect x="72" y="52" width="8" height="8" rx="1" fill="#4C1D95"/>
+              <rect x="48" y="64" width="8" height="8" rx="1" fill="#A78BFA"/>
+              <rect x="60" y="64" width="8" height="8" rx="1" fill="#4C1D95"/>
+              <rect x="72" y="64" width="8" height="8" rx="1" fill="#7C3AED"/>
+              <rect x="48" y="76" width="8" height="4" rx="1" fill="#4C1D95"/>
+              <rect x="60" y="76" width="8" height="4" rx="1" fill="#A78BFA"/>
+            </svg>
+          </div>
+          <div class="qr-label">iOS App Store</div>
+        </div>
+
+        <div class="qr-divider" aria-hidden="true"></div>
+
+        <div class="qr-item">
+          <div class="qr-code" aria-label="QR code for Google Play download">
+            <svg width="84" height="84" viewBox="0 0 84 84" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect x="0" y="0" width="84" height="84" fill="white"/>
+              <rect x="4" y="4" width="28" height="28" rx="3" fill="#166534"/>
+              <rect x="10" y="10" width="16" height="16" rx="1" fill="white"/>
+              <rect x="14" y="14" width="8" height="8" rx="1" fill="#166534"/>
+              <rect x="52" y="4" width="28" height="28" rx="3" fill="#166534"/>
+              <rect x="58" y="10" width="16" height="16" rx="1" fill="white"/>
+              <rect x="62" y="14" width="8" height="8" rx="1" fill="#166534"/>
+              <rect x="4" y="52" width="28" height="28" rx="3" fill="#166534"/>
+              <rect x="10" y="58" width="16" height="16" rx="1" fill="white"/>
+              <rect x="14" y="62" width="8" height="8" rx="1" fill="#166534"/>
+              <rect x="36" y="4" width="8" height="8" rx="1" fill="#22C55E"/>
+              <rect x="36" y="16" width="8" height="8" rx="1" fill="#166534"/>
+              <rect x="36" y="28" width="8" height="8" rx="1" fill="#22C55E"/>
+              <rect x="4" y="36" width="8" height="8" rx="1" fill="#166534"/>
+              <rect x="16" y="36" width="8" height="8" rx="1" fill="#22C55E"/>
+              <rect x="28" y="36" width="8" height="8" rx="1" fill="#166534"/>
+              <rect x="40" y="36" width="8" height="8" rx="1" fill="#22C55E"/>
+              <rect x="52" y="36" width="8" height="8" rx="1" fill="#166534"/>
+              <rect x="64" y="36" width="8" height="8" rx="1" fill="#22C55E"/>
+              <rect x="76" y="36" width="4" height="8" rx="1" fill="#166534"/>
+              <rect x="36" y="40" width="8" height="8" rx="1" fill="#7C3AED"/>
+              <rect x="48" y="52" width="8" height="8" rx="1" fill="#22C55E"/>
+              <rect x="60" y="52" width="8" height="8" rx="1" fill="#166534"/>
+              <rect x="72" y="52" width="8" height="8" rx="1" fill="#22C55E"/>
+              <rect x="48" y="64" width="8" height="8" rx="1" fill="#166534"/>
+              <rect x="60" y="64" width="8" height="8" rx="1" fill="#22C55E"/>
+              <rect x="72" y="64" width="8" height="8" rx="1" fill="#166534"/>
+              <rect x="48" y="76" width="8" height="4" rx="1" fill="#22C55E"/>
+              <rect x="60" y="76" width="8" height="4" rx="1" fill="#166534"/>
+            </svg>
+          </div>
+          <div class="qr-label">Google Play Store</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================
+       FOOTER
+  ======================================================== -->
+  <footer class="footer" role="contentinfo">
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div>
+          <div class="footer-brand-logo">
+            <div class="footer-logo-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <span class="footer-logo-text">AL ISLAH</span>
+          </div>
+          <p class="footer-brand-desc">
+            The premium Arabic &amp; Quranic knowledge app — designed for the modern Muslim learner who deserves more than flashcards.
+          </p>
+          <nav class="footer-social" aria-label="Social media links">
+            <!-- X/Twitter -->
+            <a href="#" class="social-btn" aria-label="Follow AL ISLAH on X">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+            </a>
+            <!-- Instagram -->
+            <a href="#" class="social-btn" aria-label="Follow AL ISLAH on Instagram">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                <path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+              </svg>
+            </a>
+            <!-- YouTube -->
+            <a href="#" class="social-btn" aria-label="Subscribe to AL ISLAH on YouTube">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+            </a>
+          </nav>
+        </div>
+
+        <nav aria-label="Product navigation">
+          <h3 class="footer-col-title">Product</h3>
+          <ul class="footer-links" role="list">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#screenshots">Screenshots</a></li>
+            <li><a href="#reviews">Reviews</a></li>
+            <li><a href="#download">Download</a></li>
+            <li><a href="#">Pricing</a></li>
+          </ul>
+        </nav>
+
+        <nav aria-label="Learn navigation">
+          <h3 class="footer-col-title">Learn</h3>
+          <ul class="footer-links" role="list">
+            <li><a href="#">Arabic Basics</a></li>
+            <li><a href="#">Quran Vocabulary</a></li>
+            <li><a href="#">Grammar Guide</a></li>
+            <li><a href="#">Community</a></li>
+            <li><a href="#">Blog</a></li>
+          </ul>
+        </nav>
+
+        <nav aria-label="Company navigation">
+          <h3 class="footer-col-title">Company</h3>
+          <ul class="footer-links" role="list">
+            <li><a href="#">About Us</a></li>
+            <li><a href="#">Our Scholars</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Use</a></li>
+          </ul>
+        </nav>
+      </div>
+
+      <div class="footer-bottom">
+        <p class="footer-copy">
+          &copy; 2025 AL ISLAH. All rights reserved. Made with care for the Ummah.
+        </p>
+        <div class="footer-badges">
+          <a href="#download" class="badge-store" id="footer-ios-badge" aria-label="Download on App Store">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+            </svg>
+            App Store
+          </a>
+          <a href="#download" class="badge-store" id="footer-android-badge" aria-label="Get on Google Play">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M3.18 23.81C2.44 23.4 2 22.62 2 21.74V2.26C2 1.38 2.44.6 3.18.19L13.39 12 3.18 23.81zm17.16-10.3L17.6 15 14.98 12l2.62-3 2.74 1.72c.78.49.78 1.59 0 2.79zm-7.2 7.13L12 19.5 3.75 12 12 4.5l1.14.36L7.5 12l5.64 8.64z"/>
+            </svg>
+            Google Play
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================================
+       JAVASCRIPT
+  ======================================================== -->
+  <script>
+    // Nav scroll state
+    const nav = document.getElementById('main-nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 20);
+    }, { passive: true });
+
+    // Hamburger menu
+    const hamburger = document.getElementById('hamburger-btn');
+    const navLinks = document.querySelector('.nav-links');
+
+    hamburger.addEventListener('click', () => {
+      const isOpen = navLinks.classList.toggle('mobile-open');
+      hamburger.setAttribute('aria-expanded', isOpen.toString());
+    });
+
+    // Close mobile nav on link click
+    navLinks && navLinks.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        navLinks.classList.remove('mobile-open');
+        hamburger.setAttribute('aria-expanded', 'false');
+      });
+    });
+
+    // Scroll reveal
+    const reveals = document.querySelectorAll('.reveal');
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    reveals.forEach(el => revealObserver.observe(el));
+
+    // Screenshots carousel
+    const track = document.getElementById('screenshots-track');
+    const dots  = document.querySelectorAll('.carousel-dot');
+    let isDragging = false, startX = 0, scrollLeft = 0;
+
+    const updateDots = () => {
+      const slideWidth = 220 + 24; // width + gap
+      const index = Math.round(track.scrollLeft / slideWidth);
+      dots.forEach((d, i) => {
+        d.classList.toggle('active', i === index);
+        d.setAttribute('aria-selected', (i === index).toString());
+      });
+    };
+
+    track.addEventListener('scroll', updateDots, { passive: true });
+
+    dots.forEach((dot, i) => {
+      dot.addEventListener('click', () => {
+        const slideWidth = 220 + 24;
+        track.scrollTo({ left: i * slideWidth, behavior: 'smooth' });
+      });
+    });
+
+    // Drag to scroll
+    track.addEventListener('mousedown', e => {
+      isDragging = true;
+      startX    = e.pageX - track.offsetLeft;
+      scrollLeft = track.scrollLeft;
+      track.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+      track.style.userSelect = '';
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const x    = e.pageX - track.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      track.scrollLeft = scrollLeft - walk;
+    });
+
+    // Mobile nav styles
+    const style = document.createElement('style');
+    style.textContent = `
+      @media (max-width: 768px) {
+        .nav-links.mobile-open {
+          display: flex;
+          flex-direction: column;
+          position: fixed;
+          top: 64px; left: 0; right: 0;
+          background: rgba(250,245,255,0.98);
+          backdrop-filter: blur(20px);
+          padding: 1.5rem 1.5rem 2rem;
+          gap: 1.25rem;
+          border-bottom: 1px solid var(--color-border);
+          box-shadow: var(--shadow-lg);
+          z-index: 99;
+        }
+
+        .nav-links.mobile-open a {
+          font-size: 1.0625rem;
+          padding: 0.5rem 0;
+          border-bottom: 1px solid var(--color-border);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>
