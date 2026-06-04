@@ -5,9 +5,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'models.dart';
-import 'screens.dart';
 
 class PushNotificationService {
   PushNotificationService._();
@@ -220,9 +220,7 @@ class PushNotificationService {
       return;
     }
 
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(builder: (_) => const NotificationScreen()),
-    );
+    GoRouter.of(context).go('/notifications');
   }
 
   void _startFirestoreListener() {

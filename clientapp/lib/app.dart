@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
-import 'splash_screen.dart';
+import 'core/router/app_router.dart';
 import 'ui/accessibility.dart';
 
-/// Global navigator key for push notification navigation.
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-class VillageDevelopmentApp extends StatefulWidget {
+class VillageDevelopmentApp extends ConsumerStatefulWidget {
   const VillageDevelopmentApp({super.key});
 
   @override
-  State<VillageDevelopmentApp> createState() => _VillageDevelopmentAppState();
+  ConsumerState<VillageDevelopmentApp> createState() => _VillageDevelopmentAppState();
 }
 
-class _VillageDevelopmentAppState extends State<VillageDevelopmentApp> {
+class _VillageDevelopmentAppState extends ConsumerState<VillageDevelopmentApp> {
   @override
   void initState() {
     super.initState();
@@ -36,10 +35,10 @@ class _VillageDevelopmentAppState extends State<VillageDevelopmentApp> {
   Widget build(BuildContext context) {
     final settings = accessibilityController.value;
 
-    return MaterialApp(
-      navigatorKey: navigatorKey,
+    return MaterialApp.router(
+      routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
-      title: tr('AL ISLAH', 'আল ইসলাহ'),
+      title: 'গ্রামবাসী',
       locale: Locale(settings.languageCode),
       supportedLocales: const [Locale('en'), Locale('bn')],
       localizationsDelegates: const [
@@ -47,28 +46,24 @@ class _VillageDevelopmentAppState extends State<VillageDevelopmentApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-
-      // ── Theme ─────────────────────────────────────────────────────────
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: settings.themeMode,
-
-      // ── Global builder — accessibility overrides ──────────────────────
       builder: (context, child) {
         final media = MediaQuery.of(context);
         final scale = media.textScaler.scale(1.0) *
             (settings.largeText ? 1.25 : 1.0);
-
         return MediaQuery(
           data: media.copyWith(
             textScaler: TextScaler.linear(scale),
             boldText: settings.highContrast ? true : media.boldText,
           ),
-          child: child ?? const SizedBox.shrink(),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
-
-      home: const SplashScreen(),
     );
   }
 }

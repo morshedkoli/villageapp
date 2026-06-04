@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1064035305311-4r2dnko8bi3737g1rjkhmhbr8fttskb9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.murshedkoli.alislah",
+            "certificate_hash": "11f4e57d7fadcfa5f24314b33fbdd30b2354911e"
+          }
+        },
+        {
           "client_id": "1064035305311-2ovc90ovj0ujdslrgpot09id15uhuho7.apps.googleusercontent.com",
           "client_type": 3
         }

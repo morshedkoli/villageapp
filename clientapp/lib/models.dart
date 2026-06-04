@@ -168,6 +168,79 @@ class DevelopmentProject {
   }
 }
 
+/// Represents a single entry in the `fund_transactions` Firestore collection.
+/// type = 'donation' means a donation was confirmed;
+/// type = 'expense'  means admin recorded a fund expenditure.
+class FundTransaction {
+  const FundTransaction({
+    required this.id,
+    required this.type,
+    required this.amount,
+    required this.reference,
+    required this.note,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String type;      // 'expense' | 'donation'
+  final double amount;
+  final String reference; // e.g. project title or donor name
+  final String note;      // free-text description
+  final DateTime createdAt;
+
+  bool get isExpense => type != 'donation';
+
+  factory FundTransaction.fromDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final map = doc.data() ?? <String, dynamic>{};
+    return FundTransaction(
+      id: doc.id,
+      type: (map['type'] as String?) ?? 'expense',
+      amount: _readDouble(map['amount']),
+      reference: (map['reference'] as String?) ?? '',
+      note: (map['note'] as String?) ?? '',
+      createdAt: _readDate(map['createdAt']),
+    );
+  }
+}
+
+/// Represents a payment account added by admin from which users can
+/// send donations (e.g. bKash, Nagad, Bank account).
+/// Admin manages this in the `donation_accounts` Firestore collection.
+class DonationAccount {
+  const DonationAccount({
+    required this.id,
+    required this.name,
+    required this.accountNumber,
+    required this.provider,
+    required this.isActive,
+    this.instructions = '',
+  });
+
+  final String id;
+  final String name;          // e.g. "গ্রাম উন্নয়ন তহবিল"
+  final String accountNumber; // e.g. "01XXXXXXXXX"
+  final String provider;      // 'bKash' | 'Nagad' | 'Dutch-Bangla' | 'Bank' | ...
+  final bool isActive;
+  final String instructions;  // optional note from admin
+
+  factory DonationAccount.fromDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final map = doc.data() ?? <String, dynamic>{};
+    return DonationAccount(
+      id: doc.id,
+      name: (map['name'] as String?) ?? '',
+      accountNumber: (map['accountNumber'] as String?) ?? '',
+      provider: (map['provider'] as String?) ?? 'bKash',
+      isActive: (map['isActive'] as bool?) ?? true,
+      instructions: (map['instructions'] as String?) ?? '',
+    );
+  }
+}
+
+
 class Citizen {
   const Citizen({
     required this.id,
@@ -231,4 +304,40 @@ class AppNotification {
       createdAt: _readDate(map['createdAt']),
     );
   }
+}
+
+class Leader {
+  const Leader({
+    required this.id,
+    required this.name,
+    required this.role,
+    required this.experience,
+    required this.photoUrl,
+    required this.isOnline,
+    required this.phone,
+    required this.email,
+  });
+
+  final String id;
+  final String name;
+  final String role;
+  final String experience;
+  final String photoUrl;
+  final bool isOnline;
+  final String phone;
+  final String email;
+}
+
+class Comment {
+  const Comment({
+    required this.id,
+    required this.authorName,
+    required this.text,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String authorName;
+  final String text;
+  final DateTime createdAt;
 }

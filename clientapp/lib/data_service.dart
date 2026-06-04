@@ -23,7 +23,12 @@ class DataService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    // Web client ID is required for Google Sign In on Flutter Web
+    clientId: kIsWeb
+        ? '1064035305311-2ovc90ovj0ujdslrgpot09id15uhuho7.apps.googleusercontent.com'
+        : null,
+  );
 
   // ─── Stream caches (shared across widgets) ────────────────────────
   BehaviorSubject<VillageOverview>? _villageOverviewCache;
@@ -53,6 +58,8 @@ class DataService {
     _projects8Cache = null;
     _citizensCache?.close();
     _citizensCache = null;
+    _fundTxCache?.close();
+    _fundTxCache = null;
   }
 
   User? get currentUser => _auth.currentUser;
@@ -1199,7 +1206,7 @@ class DataService {
     );
   }
 
-  /// Returns a stream of the total number of development projects.
+  /// Returns a stream of total number of development projects.
   Stream<int> projectsCount() {
     return _handleStreamErrors(
       _firestore
@@ -1208,5 +1215,60 @@ class DataService {
           .map((snap) => snap.size),
       0,
     );
+  }
+
+  // ─── Fund Transactions (expenses) ───────────────────────────────────
+
+  BehaviorSubject<List<FundTransaction>>? _fundTxCache;
+
+  /// Stream of ALL fund_transactions ordered newest first.
+  /// Filters to only expense-type entries (type != 'donation') for the
+  /// expenses list, but returns all so callers can filter as needed.
+  Stream<List<FundTransaction>> fundTransactions({int limit = 200}) {
+    if (_fundTxCache != null) return _fundTxCache!.stream;
+    _fundTxCache = BehaviorSubject<List<FundTransaction>>();
+    _handleStreamErrors(
+      _firestore
+          .collection('fund_transactions')
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .snapshots()
+          .map((snap) => snap.docs.map(FundTransaction.fromDoc).toList()),
+      const <FundTransaction>[],
+      'fundTransactions',
+    ).listen(
+      (data) => _fundTxCache?.add(data),
+      onError: (e) => debugPrint('DataService [fundTransactions]: $e'),
+    );
+    return _fundTxCache!.stream;
+  }
+
+  /// Admin records a new expense against the village fund.
+  /// Increments [totalSpent] on the village doc and writes a
+  /// fund_transaction document so the stream above picks it up.
+  Future<void> recordExpense({
+    required double amount,
+    required String reference,
+    String note = '',
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('Login required.');
+
+    await _firestore.runTransaction((tx) async {
+      final villageRef =
+          _firestore.collection('villages').doc(villageDocId);
+      tx.set(villageRef, {
+        'totalSpent': FieldValue.increment(amount),
+      }, SetOptions(merge: true));
+
+      tx.set(_firestore.collection('fund_transactions').doc(), {
+        'type': 'expense',
+        'amount': amount,
+        'reference': reference,
+        'note': note,
+        'recordedBy': user.uid,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    });
   }
 }
