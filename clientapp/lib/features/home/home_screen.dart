@@ -420,7 +420,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               Expanded(
                 child: _QuickActionBtn(
                   icon: Icons.person_add_outlined,
-                  label: 'নাগরিক যোগ',
+                  label: 'নাগরিক তালিকা',
                   onTap: () => context.go('/citizens'),
                 ),
               ),
@@ -553,7 +553,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // ── Top Contributors ─────────────────────────────
   Widget _buildTopContributors() {
-    final citizens = ref.watch(citizensProvider);
+    final donations = ref.watch(donationsProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -561,28 +561,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           title: 'শীর্ষ দাতা',
           actionLabel: 'সব দেখুন',
           actionIcon: Icons.arrow_forward_ios_rounded,
-          onAction: () => context.go('/citizens'),
+          onAction: () => context.go('/donate'),
         ),
         AppSpacing.hMd,
         SizedBox(
           height: 134,
-          child: citizens.when(
+          child: donations.when(
             loading: () => const SizedBox(height: 134),
             error: (_, _) => const SizedBox(height: 134),
             data: (list) {
-              final top5 = list.take(5).toList();
+              final totals = <String, double>{};
+              for (final donation in list) {
+                if (donation.donorName.isEmpty) {
+                  continue;
+                }
+                totals[donation.donorName] =
+                    (totals[donation.donorName] ?? 0) + donation.amount;
+              }
+              final top5 = totals.entries.toList()
+                ..sort((a, b) => b.value.compareTo(a.value));
+              final ranked = top5.take(5).toList();
               return ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: EdgeInsets.zero,
-                itemCount: top5.length,
+                itemCount: ranked.length,
                 separatorBuilder: (_, _) => AppSpacing.wMd,
                 itemBuilder: (context, index) {
-                  final c = top5[index];
+                  final donor = ranked[index];
                   return SizedBox(
                     width: 100,
                     child: PressScale(
                       scale: 0.97,
-                      onTap: () => context.go('/citizens/${c.id}'),
+                      onTap: () => context.go('/donate'),
                       child: PremiumCard(
                         padding: const EdgeInsets.all(AppSpacing.md),
                         child: Column(
@@ -591,8 +601,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             Stack(
                               clipBehavior: Clip.none,
                               children: [
-                                AvatarWidget(
-                                  initials: c.name,
+                            AvatarWidget(
+                                  initials: donor.key,
                                   size: 40,
                                   showOnline: index == 0,
                                 ),
@@ -625,7 +635,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             ),
                             AppSpacing.hSm,
                             Text(
-                              c.name,
+                              donor.key,
                               style: context.textTheme.labelSmall?.copyWith(
                                 color: context.textPrimary,
                                 fontWeight: FontWeight.w600,
@@ -633,6 +643,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               textAlign: TextAlign.center,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                            ),
+                            AppSpacing.hXs,
+                            Text(
+                              '৳${_formatAmount(donor.value)}',
+                              style: context.textTheme.labelSmall?.copyWith(
+                                color: context.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ],
                         ),

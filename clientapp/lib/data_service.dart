@@ -71,26 +71,6 @@ class DataService {
     await _auth.signOut();
   }
 
-  Future<void> sendLoginLink(String email) async {
-    await _auth.sendSignInLinkToEmail(
-      email: email,
-      actionCodeSettings: ActionCodeSettings(
-        url: 'https://doulatpara.page.link/login',
-        handleCodeInApp: true,
-        androidPackageName: 'com.murshedkoli.alislah',
-        iOSBundleId: 'com.example.doulatpara',
-      ),
-    );
-  }
-
-  Future<void> signInWithEmailLink({
-    required String email,
-    required String emailLink,
-  }) async {
-    await _auth.signInWithEmailLink(email: email, emailLink: emailLink);
-    await _upsertUserProfile();
-  }
-
   /// Returns `true` if this is a brand-new user (profile setup needed).
   Future<bool> signInWithGoogle() async {
     // Ensure a clean session before opening the account picker.

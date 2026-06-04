@@ -132,7 +132,7 @@ class _AllDonationsScreenState extends ConsumerState<AllDonationsScreen> {
                           AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xxxl,
                         ),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
                         itemBuilder: (ctx, i) => _DonationTile(
                           donation: filtered[i],
                           fmt: _fmt,

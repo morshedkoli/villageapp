@@ -38,85 +38,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  void _showPhoneSheet() {
-    final phoneController = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(AppRadius.xxxl),
-          topRight: Radius.circular(AppRadius.xxxl),
-        ),
-      ),
-      builder: (ctx) {
-        final bottom = MediaQuery.of(ctx).viewInsets.bottom;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(AppSpacing.xxl, AppSpacing.xxl, AppSpacing.xxl, bottom + AppSpacing.xxl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: context.textTertiary,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              AppSpacing.hXxl,
-              Text(
-                'ফোন নম্বর লিখুন',
-                style: context.textTheme.titleMedium?.copyWith(
-                  color: context.textPrimary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              AppSpacing.hSm,
-              Text(
-                'আমরা আপনাকে একটি OTP কোড পাঠাব',
-                style: context.textTheme.bodyMedium?.copyWith(
-                  color: context.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              AppSpacing.hXxl,
-              TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  hintText: '০১৭XXXXXXXX',
-                  prefixText: '+88 ',
-                  prefixStyle: context.textTheme.bodyLarge?.copyWith(
-                    color: context.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              AppSpacing.hXxl,
-              FilledButton(
-                onPressed: () {
-                  final phone = phoneController.text.trim();
-                  if (phone.isNotEmpty) {
-                    Navigator.of(ctx).pop();
-                    context.push('/otp', extra: {'phone': phone});
-                  }
-                },
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                ),
-                child: Text('OTP পাঠান'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -169,8 +90,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildGoogleButton(),
-                    AppSpacing.hMd,
-                    _buildPhoneButton(),
                   ],
                 ),
               ),
@@ -285,39 +204,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPhoneButton() {
-    return PressScale(
-      onTap: _showPhoneSheet,
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          color: context.primary,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          boxShadow: [
-            BoxShadow(
-              color: context.primary.withValues(alpha: 0.3),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.phone_android_rounded, size: 20, color: context.onPrimary),
-            AppSpacing.wMd,
-            Text(
-              'ফোন নম্বর দিয়ে লগইন করুন',
-              style: context.textTheme.labelLarge?.copyWith(
-                color: context.onPrimary,
-              ),
-            ),
           ],
         ),
       ),

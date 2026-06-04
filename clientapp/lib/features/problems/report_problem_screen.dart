@@ -1,11 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/motion.dart';
+import '../../data_service.dart';
 
 class ReportProblemScreen extends ConsumerStatefulWidget {
   const ReportProblemScreen({super.key});
@@ -20,6 +24,8 @@ class _ReportProblemScreenState extends ConsumerState<ReportProblemScreen> {
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
   String _selectedCategory = 'রাস্তা';
+  File? _selectedImage;
+  bool _submitting = false;
 
   final _categories = ['রাস্তা', 'পানি', 'বিদ্যুৎ', 'শিক্ষা', 'স্বাস্থ্য', 'অন্যান্য'];
 
@@ -256,7 +262,7 @@ class _ReportProblemScreenState extends ConsumerState<ReportProblemScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           child: GestureDetector(
-            onTap: () {},
+            onTap: _pickImage,
             child: Container(
               height: 120,
               width: double.infinity,
@@ -269,31 +275,55 @@ class _ReportProblemScreenState extends ConsumerState<ReportProblemScreen> {
                   strokeAlign: BorderSide.strokeAlignInside,
                 ),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.camera_alt_outlined,
-                    size: 36,
-                    color: context.textTertiary,
-                  ),
-                  AppSpacing.hSm,
-                  Text(
-                    'ছবি যুক্ত করুন',
-                    style: context.textTheme.bodyMedium?.copyWith(
-                      color: context.textTertiary,
-                      fontWeight: FontWeight.w500,
+              child: _selectedImage == null
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.camera_alt_outlined,
+                          size: 36,
+                          color: context.textTertiary,
+                        ),
+                        AppSpacing.hSm,
+                        Text(
+                          'ছবি যুক্ত করুন',
+                          style: context.textTheme.bodyMedium?.copyWith(
+                            color: context.textTertiary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        AppSpacing.hXs,
+                        Text(
+                          'সমস্যার ছবি আপলোড করুন',
+                          style: context.textTheme.labelSmall?.copyWith(
+                            color: context.textTertiary,
+                          ),
+                        ),
+                      ],
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.file(_selectedImage!, fit: BoxFit.cover),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.55),
+                                borderRadius: BorderRadius.circular(AppRadius.full),
+                              ),
+                              child: IconButton(
+                                onPressed: () => setState(() => _selectedImage = null),
+                                icon: const Icon(Icons.close_rounded, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  AppSpacing.hXs,
-                  Text(
-                    'সমস্যার ছবি আপলোড করুন',
-                    style: context.textTheme.labelSmall?.copyWith(
-                      color: context.textTertiary,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         ),
@@ -348,21 +378,58 @@ class _ReportProblemScreenState extends ConsumerState<ReportProblemScreen> {
       child: SizedBox(
         width: double.infinity,
         child: FilledButton(
-          onPressed: _handleSubmit,
+          onPressed: _submitting ? null : _handleSubmit,
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
           ),
-          child: const Text(
-            'রিপোর্ট জমা দিন',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-          ),
+          child: _submitting
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text(
+                  'রিপোর্ট জমা দিন',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                ),
         ),
       ),
     );
   }
 
-  void _handleSubmit() {
-    if (_formKey.currentState?.validate() ?? false) {
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1800,
+    );
+    if (image == null) {
+      return;
+    }
+    setState(() => _selectedImage = File(image.path));
+  }
+
+  Future<void> _handleSubmit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    setState(() => _submitting = true);
+    try {
+      await DataService.instance.reportProblem(
+        title: '[${_selectedCategory.trim()}] ${_titleController.text.trim()}',
+        description: _descriptionController.text.trim(),
+        location: _locationController.text.trim(),
+        photo: _selectedImage,
+      );
+
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('রিপোর্ট সফলভাবে জমা দেওয়া হয়েছে'),
@@ -373,6 +440,23 @@ class _ReportProblemScreenState extends ConsumerState<ReportProblemScreen> {
         ),
       );
       context.pop();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Bad state: ', '')),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
     }
   }
 }

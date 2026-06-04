@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/providers.dart';
-import '../../models.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_radius.dart';
@@ -21,29 +20,51 @@ class LeadersScreen extends ConsumerStatefulWidget {
 class _LeadersScreenState extends ConsumerState<LeadersScreen> {
   @override
   Widget build(BuildContext context) {
-    final leaders = ref.watch(leadersProvider);
-    final totalLeaders = leaders.length;
-    final activeLeaders = leaders.where((l) => l.isOnline).length;
+    final donationsAsync = ref.watch(donationsProvider);
 
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.xxxl,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FadeSlideIn(delay: 0, child: _buildHeader()),
-              AppSpacing.hXxl,
-              FadeSlideIn(delay: 80, child: _buildStatsRow(totalLeaders, activeLeaders)),
-              AppSpacing.hXxl,
-              if (leaders.isEmpty)
-                _buildEmptyState()
-              else
-                FadeSlideIn(delay: 160, child: _buildLeadersGrid(leaders)),
-            ],
-          ),
+        child: donationsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(child: Text('ত্রুটি: $error')),
+          data: (donations) {
+            final totals = <String, double>{};
+            for (final donation in donations) {
+              if (donation.donorName.isEmpty) {
+                continue;
+              }
+              totals[donation.donorName] =
+                  (totals[donation.donorName] ?? 0) + donation.amount;
+            }
+
+            final leaders = totals.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value));
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.xxxl,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FadeSlideIn(delay: 0, child: _buildHeader()),
+                  AppSpacing.hXxl,
+                  FadeSlideIn(
+                    delay: 80,
+                    child: _buildStatsRow(
+                      leaders.length,
+                      leaders.fold<double>(0, (sum, item) => sum + item.value),
+                    ),
+                  ),
+                  AppSpacing.hXxl,
+                  if (leaders.isEmpty)
+                    _buildEmptyState()
+                  else
+                    FadeSlideIn(delay: 160, child: _buildLeadersGrid(leaders)),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -102,7 +123,7 @@ class _LeadersScreenState extends ConsumerState<LeadersScreen> {
     );
   }
 
-  Widget _buildStatsRow(int totalLeaders, int activeLeaders) {
+  Widget _buildStatsRow(int totalLeaders, double totalRaised) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       child: Row(
@@ -118,8 +139,8 @@ class _LeadersScreenState extends ConsumerState<LeadersScreen> {
           AppSpacing.wMd,
           Expanded(
             child: KpiCard(
-              label: 'অভিজ্ঞতা',
-              value: '২৫+ বছর',
+              label: 'মোট সংগ্রহ',
+              value: '৳${totalRaised.toStringAsFixed(0)}',
               icon: Icons.workspace_premium_outlined,
               iconBackground: AppColors.warning.withValues(alpha: 0.1),
             ),
@@ -127,11 +148,9 @@ class _LeadersScreenState extends ConsumerState<LeadersScreen> {
           AppSpacing.wMd,
           Expanded(
             child: KpiCard(
-              label: 'সক্রিয়',
-              value: '$activeLeaders জন',
-              subtitle: totalLeaders > 0
-                  ? '${(activeLeaders * 100 / totalLeaders).round()}%'
-                  : '০%',
+              label: 'শীর্ষ দাতা',
+              value: totalLeaders > 0 ? '#1 - #$totalLeaders' : '০',
+              subtitle: 'অনুমোদিত অনুদান',
               icon: Icons.verified_outlined,
               iconBackground: AppColors.success.withValues(alpha: 0.1),
             ),
@@ -141,7 +160,7 @@ class _LeadersScreenState extends ConsumerState<LeadersScreen> {
     );
   }
 
-  Widget _buildLeadersGrid(List<Leader> leaders) {
+  Widget _buildLeadersGrid(List<MapEntry<String, double>> leaders) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       child: GridView.builder(
@@ -156,7 +175,7 @@ class _LeadersScreenState extends ConsumerState<LeadersScreen> {
         itemCount: leaders.length,
         itemBuilder: (context, index) {
           final leader = leaders[index];
-          final initials = leader.name.isNotEmpty ? leader.name[0] : '?';
+          final initials = leader.key.isNotEmpty ? leader.key[0] : '?';
           return FadeSlideIn(
             delay: index * 60,
             child: PressScale(
@@ -168,14 +187,13 @@ class _LeadersScreenState extends ConsumerState<LeadersScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     AvatarWidget(
-                      imageUrl: leader.photoUrl.isNotEmpty ? leader.photoUrl : null,
                       initials: initials,
                       size: 64,
-                      showOnline: leader.isOnline,
+                      showOnline: index == 0,
                     ),
                     AppSpacing.hMd,
                     Text(
-                      leader.name,
+                      leader.key,
                       style: context.textTheme.titleSmall?.copyWith(
                         color: context.textPrimary,
                         fontWeight: FontWeight.w600,
@@ -186,7 +204,7 @@ class _LeadersScreenState extends ConsumerState<LeadersScreen> {
                     ),
                     AppSpacing.hXs,
                     Text(
-                      leader.role,
+                      'র‌্যাংক #${index + 1}',
                       style: context.textTheme.bodySmall?.copyWith(
                         color: context.primary,
                         fontWeight: FontWeight.w500,
@@ -201,21 +219,12 @@ class _LeadersScreenState extends ConsumerState<LeadersScreen> {
                         borderRadius: BorderRadius.circular(AppRadius.full),
                       ),
                       child: Text(
-                        leader.experience,
+                        '৳${leader.value.toStringAsFixed(0)}',
                         style: context.textTheme.labelSmall?.copyWith(
                           color: context.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
-                    const Spacer(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildActionButton(Icons.call_outlined, AppColors.success, () {}),
-                        _buildActionButton(Icons.chat_outlined, AppColors.info, () {}),
-                        _buildActionButton(Icons.email_outlined, AppColors.warning, () {}),
-                      ],
                     ),
                   ],
                 ),
@@ -227,18 +236,4 @@ class _LeadersScreenState extends ConsumerState<LeadersScreen> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-        child: Icon(icon, size: 18, color: color),
-      ),
-    );
-  }
 }

@@ -156,7 +156,7 @@ class _CitizenDirectoryScreenState extends ConsumerState<CitizenDirectoryScreen>
                           return _CitizenCard(
                             citizen: citizen,
                             isAuthenticated: isAuthenticated,
-                            onTap: () => context.push('/citizens/$index'),
+                            onTap: () => context.push('/citizens/${citizen.id}'),
                             onCall: isAuthenticated
                                 ? () {}
                                 : () => showLoginPrompt(

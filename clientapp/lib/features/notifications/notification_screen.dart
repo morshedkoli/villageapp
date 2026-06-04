@@ -7,6 +7,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/motion.dart';
+import '../../data_service.dart';
 
 class NotificationScreen extends ConsumerStatefulWidget {
   const NotificationScreen({super.key});
@@ -19,15 +20,21 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
     final notificationsAsync = ref.watch(notificationsProvider);
-    final unreadCountAsync = ref.watch(unreadCountProvider);
+    final readIdsAsync = ref.watch(notificationReadIdsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('বিজ্ঞপ্তি'),
         actions: [
           TextButton(
-            onPressed: () {
-              // mark all as read
+            onPressed: () async {
+              final notifications = notificationsAsync.asData?.value;
+              if (notifications == null || notifications.isEmpty) {
+                return;
+              }
+              await DataService.instance.markAllNotificationsRead(
+                notifications.map((item) => item.id),
+              );
             },
             child: const Text('সব পড়া হয়েছে'),
           ),
@@ -39,7 +46,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('ত্রুটি: $e')),
           data: (notifications) {
-            final unreadCount = unreadCountAsync.asData?.value ?? 0;
+            final readIds = readIdsAsync.asData?.value ?? <String>{};
             return ListView.separated(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxxl,
@@ -48,6 +55,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
               separatorBuilder: (_, _) => AppSpacing.hMd,
               itemBuilder: (context, index) {
                 final notification = notifications[index];
+                final isUnread = !readIds.contains(notification.id);
                 final icon = _iconForType(notification.type);
                 final iconColor = _colorForType(context, notification.type);
                 final time = _formatTime(notification.createdAt);
@@ -56,13 +64,18 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                   delay: index * 50,
                   child: PressScale(
                     scale: 0.98,
-                    onTap: () {},
+                    onTap: () async {
+                      if (isUnread) {
+                        await DataService.instance
+                            .markNotificationRead(notification.id);
+                      }
+                    },
                     child: GlassCard(
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (index < unreadCount)
+                          if (isUnread)
                             Container(
                               width: 8,
                               height: 8,
@@ -95,10 +108,10 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                                 Text(
                                   notification.title,
                                   style: context.textTheme.bodyMedium?.copyWith(
-                                    color: index < unreadCount
+                                    color: isUnread
                                         ? context.textPrimary
                                         : context.textSecondary,
-                                    fontWeight: index < unreadCount
+                                    fontWeight: isUnread
                                         ? FontWeight.w600
                                         : FontWeight.w400,
                                   ),
@@ -107,7 +120,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                                 Text(
                                   notification.body,
                                   style: context.textTheme.bodySmall?.copyWith(
-                                    color: index < unreadCount
+                                    color: isUnread
                                         ? context.textSecondary
                                         : context.textTertiary,
                                   ),

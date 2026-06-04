@@ -10,6 +10,7 @@ import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/providers/providers.dart';
 import '../../data_service.dart';
+import '../../models.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Root screen — switches between gate and profile
@@ -270,15 +271,21 @@ class _ProfileBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
+    final profile = ref.watch(currentUserProfileProvider).asData?.value;
+    final myDonations = ref.watch(myDonationsProvider).asData?.value ?? const <Donation>[];
+    final myProblems = ref.watch(myProblemsProvider).asData?.value ?? const <ProblemReport>[];
 
-    // Prefer live Firebase display name / photo over mock data
     final name = (firebaseUser?.displayName as String?)?.isNotEmpty == true
         ? firebaseUser!.displayName as String
-        : user?.name ?? 'ব্যবহারকারী';
-    final email = (firebaseUser?.email as String?) ?? user?.email ?? '';
-    final photoUrl = (firebaseUser?.photoURL as String?) ?? '';
+        : (profile?['name'] as String?) ?? 'ব্যবহারকারী';
+    final email = (firebaseUser?.email as String?) ??
+        (profile?['email'] as String?) ??
+        '';
+    final photoUrl = (firebaseUser?.photoURL as String?) ??
+        (profile?['photoUrl'] as String?) ??
+        '';
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final totalDonated = myDonations.fold<double>(0, (sum, item) => sum + item.amount);
 
     return Scaffold(
       body: CustomScrollView(
@@ -312,24 +319,23 @@ class _ProfileBody extends ConsumerWidget {
             padding: const EdgeInsets.all(AppSpacing.lg),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // Stats
                 FadeSlideIn(delay: 0, child: _SectionLabel('পরিসংখ্যান')),
                 AppSpacing.hMd,
-                FadeSlideIn(delay: 60, child: _StatsRow(user: user)),
+                FadeSlideIn(
+                  delay: 60,
+                  child: _StatsRow(
+                    totalDonated: totalDonated,
+                    totalDonations: myDonations.length,
+                    reportedProblems: myProblems.length,
+                    village: (profile?['village'] as String?) ?? '',
+                  ),
+                ),
 
                 AppSpacing.hXxl,
 
-                // Achievements
-                FadeSlideIn(delay: 120, child: _SectionLabel('অর্জনসমূহ')),
+                FadeSlideIn(delay: 120, child: _SectionLabel('দ্রুত অ্যাকশন')),
                 AppSpacing.hMd,
-                FadeSlideIn(delay: 160, child: const _AchievementsCarousel()),
-
-                AppSpacing.hXxl,
-
-                // Quick actions
-                FadeSlideIn(delay: 200, child: _SectionLabel('দ্রুত অ্যাকশন')),
-                AppSpacing.hMd,
-                FadeSlideIn(delay: 240, child: const _ActionMenu()),
+                FadeSlideIn(delay: 160, child: const _ActionMenu()),
 
                 AppSpacing.hXxxl,
               ]),
@@ -507,16 +513,25 @@ class _ArcPainter extends CustomPainter {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _StatsRow extends StatelessWidget {
-  final UserProfile? user;
-  const _StatsRow({required this.user});
+  final double totalDonated;
+  final int totalDonations;
+  final int reportedProblems;
+  final String village;
+
+  const _StatsRow({
+    required this.totalDonated,
+    required this.totalDonations,
+    required this.reportedProblems,
+    required this.village,
+  });
 
   @override
   Widget build(BuildContext context) {
     final items = [
-      _StatItem('মোট দান', '৳ ${user?.totalDonations ?? 0}', Icons.volunteer_activism_outlined, AppColors.success),
-      _StatItem('প্রকল্প', '${user?.joinedProjects ?? 0}টি', Icons.construction_outlined, AppColors.info),
-      _StatItem('রিপোর্ট', '${user?.reportedProblems ?? 0}টি', Icons.report_outlined, AppColors.warning),
-      _StatItem('স্বেচ্ছাসেবক', '${user?.volunteerHours ?? 0} ঘ', Icons.access_time_outlined, AppColors.primary),
+      _StatItem('মোট দান', '৳ ${totalDonated.toStringAsFixed(0)}', Icons.volunteer_activism_outlined, AppColors.success),
+      _StatItem('দান সংখ্যা', '$totalDonations টি', Icons.receipt_long_outlined, AppColors.info),
+      _StatItem('রিপোর্ট', '$reportedProblems টি', Icons.report_outlined, AppColors.warning),
+      _StatItem('গ্রাম', village.isNotEmpty ? village : 'উল্লেখ নেই', Icons.location_on_outlined, AppColors.primary),
     ];
 
     return Row(
@@ -595,78 +610,6 @@ class _StatCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ACHIEVEMENTS CAROUSEL
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AchievementsCarousel extends StatelessWidget {
-  const _AchievementsCarousel();
-
-  static const _items = [
-    _AchievItem(Icons.emoji_events_rounded, 'শীর্ষ দাতা', AppColors.warning),
-    _AchievItem(Icons.volunteer_activism_rounded, '১০০ দান', AppColors.success),
-    _AchievItem(Icons.construction_rounded, '৫০ প্রকল্প', AppColors.info),
-    _AchievItem(Icons.star_rounded, 'প্রতিষ্ঠাতা', AppColors.primary),
-    _AchievItem(Icons.groups_rounded, 'কমিউনিটি লিডার', AppColors.warning),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 108,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _items.length,
-        separatorBuilder: (_, _) => AppSpacing.wMd,
-        itemBuilder: (context, i) {
-          final a = _items[i];
-          return Container(
-            width: 90,
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  a.color.withValues(alpha: 0.15),
-                  a.color.withValues(alpha: 0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: a.color.withValues(alpha: 0.25)),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(a.icon, size: 30, color: a.color),
-                AppSpacing.hSm,
-                Text(
-                  a.label,
-                  style: context.textTheme.labelSmall?.copyWith(
-                    color: context.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 10,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _AchievItem {
-  final IconData icon;
-  final String label;
-  final Color color;
-  const _AchievItem(this.icon, this.label, this.color);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // QUICK-ACTION MENU
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -676,9 +619,9 @@ class _ActionMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tiles = [
-      _TileData(Icons.volunteer_activism_outlined, 'আমার দান', AppColors.success, () {}),
-      _TileData(Icons.report_outlined, 'আমার রিপোর্ট', AppColors.warning, () {}),
-      _TileData(Icons.construction_outlined, 'আমার প্রকল্প', AppColors.info, () {}),
+      _TileData(Icons.volunteer_activism_outlined, 'আমার দান', AppColors.success, () => context.push('/all-donations')),
+      _TileData(Icons.report_outlined, 'আমার রিপোর্ট', AppColors.warning, () => context.push('/problems')),
+      _TileData(Icons.construction_outlined, 'সব প্রকল্প', AppColors.info, () => context.push('/projects')),
       _TileData(Icons.settings_outlined, 'সেটিংস', context.textSecondary, () => context.push('/settings')),
       _TileData(Icons.logout_rounded, 'লগআউট', AppColors.error, () => _confirmSignOut(context, ref)),
     ];

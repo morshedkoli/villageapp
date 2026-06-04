@@ -9,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/providers/providers.dart';
+import '../../data_service.dart';
 
 class DonationCheckoutScreen extends ConsumerStatefulWidget {
   const DonationCheckoutScreen({super.key});
@@ -622,13 +623,72 @@ class _DonationCheckoutScreenState
 
   // ── Logic ──────────────────────────────────────────────────────────────────
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
+    final amountText = _selectedAmount.isNotEmpty
+        ? _selectedAmount.replaceAll(',', '')
+        : _customAmountController.text.trim().replaceAll(',', '');
+    final amount = double.tryParse(amountText);
+    final transactionId = _trxIdController.text.trim();
+    final senderNumber = _senderNumberController.text.trim();
+    final selectedAccount = _selectedAccount;
+
+    if (selectedAccount == null) {
+      return;
+    }
+
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('সঠিক দানের পরিমাণ লিখুন')),
+      );
+      return;
+    }
+
+    if (transactionId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ট্রানজেকশন আইডি দিন')),
+      );
+      return;
+    }
+
+    if (senderNumber.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('প্রেরকের নম্বর দিন')),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (!mounted) return;
-      setState(() => _isSubmitting = false);
+
+    try {
+      await DataService.instance.addDonation(
+        amount: amount,
+        paymentMethod: selectedAccount['type'] ?? 'Manual Transfer',
+        transactionId: transactionId,
+        senderNumber: senderNumber,
+        receivedAccountId: selectedAccount['id'],
+        receivedAccountLabel: [
+          selectedAccount['type'],
+          selectedAccount['number'],
+          selectedAccount['name'],
+        ].whereType<String>().where((value) => value.isNotEmpty).join(' • '),
+      );
+
+      if (!mounted) {
+        return;
+      }
       _showSuccessDialog();
-    });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Bad state: ', ''))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   void _showSuccessDialog() {
