@@ -26,7 +26,7 @@ android {
         }
     }
 
-    // Exclude common license/metadata files from transitive dependencies.
+    // Exclude common license/metadata files from transitive dependencies.  
     packaging {
         resources {
             excludes += setOf(
@@ -66,13 +66,13 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
+            // TODO: Add your own signing config for the release build.     
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                getDefaultProguardFile("proguard-android-optimize.txt"),    
                 "proguard-rules.pro"
             )
         }
@@ -84,5 +84,5 @@ flutter {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")       
 }
