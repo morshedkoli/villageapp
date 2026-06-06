@@ -1,7 +1,7 @@
 name: doulatpara
 description: "Transparent village fund and development participation app."
 publish_to: 'none'
-version: 1.0.1+2
+version: 2.0.0+1
 
 environment:
   sdk: ^3.11.1
@@ -19,7 +19,8 @@ dependencies:
   google_fonts: ^8.1.0
   image_picker: ^1.2.2
   intl: ^0.20.2
-  google_sign_in: ^6.2.2
+  google_sign_in: ^7.2.0
+  cupertino_icons: ^1.0.8
   shared_preferences: ^2.5.5
   connectivity_plus: ^7.1.1
   rxdart: ^0.28.0

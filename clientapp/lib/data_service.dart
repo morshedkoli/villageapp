@@ -23,12 +23,14 @@ class DataService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    // Web client ID is required for Google Sign In on Flutter Web
-    clientId: kIsWeb
-        ? '1064035305311-2ovc90ovj0ujdslrgpot09id15uhuho7.apps.googleusercontent.com'
-        : null,
-  );
+
+  Future<void> initialize() async {
+    await GoogleSignIn.instance.initialize(
+      clientId: kIsWeb
+          ? '1064035305311-2ovc90ovj0ujdslrgpot09id15uhuho7.apps.googleusercontent.com'
+          : null,
+    );
+  }
 
   // ─── Stream caches (shared across widgets) ────────────────────────
   BehaviorSubject<VillageOverview>? _villageOverviewCache;
@@ -67,19 +69,20 @@ class DataService {
 
   Future<void> signOut() async {
     clearStreamCaches();
-    await _googleSignIn.signOut();
+    await GoogleSignIn.instance.signOut();
     await _auth.signOut();
   }
 
   /// Returns `true` if this is a brand-new user (profile setup needed).
   Future<bool> signInWithGoogle() async {
     // Ensure a clean session before opening the account picker.
-    await _googleSignIn.signOut();
-    final googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) return false;
-    final googleAuth = await googleUser.authentication;
+    await GoogleSignIn.instance.signOut();
+    final googleUser = await GoogleSignIn.instance.authenticate();
+    final googleAuth = googleUser.authentication;
+    final googleAuthz = await googleUser.authorizationClient.authorizationForScopes([]);
+    
     final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
+      accessToken: googleAuthz?.accessToken,
       idToken: googleAuth.idToken,
     );
     await _auth.signInWithCredential(credential);

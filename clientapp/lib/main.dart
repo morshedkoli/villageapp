@@ -7,6 +7,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'app.dart';
 import 'connectivity_service.dart';
 import 'core/theme/app_colors.dart';
+import 'data_service.dart';
 import 'firebase_options.dart';
 import 'push_notification_service.dart';
 import 'ui/accessibility.dart';
@@ -56,6 +57,7 @@ Future<void> main() async {
   await ConnectivityService.instance.initialize();
   await accessibilityController.loadSavedPreferences();
   await PushNotificationService.instance.initialize(navigatorKey);
+  await DataService.instance.initialize();
 
   runApp(const ProviderScope(child: VillageDevelopmentApp()));
 }

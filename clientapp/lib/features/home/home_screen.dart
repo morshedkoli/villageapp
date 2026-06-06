@@ -308,7 +308,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildHeroBalanceCard(VillageOverview? overview) {
     final balance = overview != null
         ? '৳${_formatAmount(overview.availableBalance)}'
-        : '৳১২,৪৫,৭৮০';
+        : '--';
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xxl),
@@ -363,37 +363,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             balance,
             style: AppTypography.heroAmount.copyWith(
               color: AppColors.inkOnPrimary,
-            ),
-          ),
-          AppSpacing.hSm,
-
-          // Growth chip
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: 4,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.inkOnPrimary.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(AppRadius.full),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.trending_up_rounded,
-                  size: 13,
-                  color: AppColors.inkOnPrimary,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'গত মাসে +১২% বৃদ্ধি',
-                  style: context.textTheme.labelSmall?.copyWith(
-                    color: AppColors.inkOnPrimary.withValues(alpha: 0.9),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
             ),
           ),
           AppSpacing.hXxl,
