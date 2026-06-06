@@ -15,7 +15,6 @@ import '../../core/widgets/motion.dart';
 import '../../core/providers/providers.dart';
 import '../../models.dart';
 
-
 class DonationScreen extends ConsumerStatefulWidget {
   const DonationScreen({super.key});
 
@@ -30,55 +29,80 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
   Widget build(BuildContext context) {
     final dashboardAsync = ref.watch(dashboardProvider);
     final donationsAsync = ref.watch(recentDonationsProvider);
+    final topDonorsAsync = ref.watch(topDonorsProvider);
 
-    return dashboardAsync.when(
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
-      data: (overview) {
-        final collectedAmount = overview.totalFundCollected;
+    if (dashboardAsync.isLoading || donationsAsync.isLoading || topDonorsAsync.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
-        return donationsAsync.when(
-          loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-          error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
-          data: (donations) {
-            return Scaffold(
-              body: SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.xxxl,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      FadeSlideIn(delay: 0, child: _buildHeader()),
-                      AppSpacing.hLg,
-                      FadeSlideIn(delay: 80, child: _buildFundOverview(collectedAmount)),
-                      AppSpacing.hXxl,
-                      FadeSlideIn(delay: 160, child: _buildCategories()),
-                      AppSpacing.hXxl,
-                      FadeSlideIn(delay: 240, child: _buildRecentDonations(donations)),
-                      AppSpacing.hXxl,
-                      FadeSlideIn(delay: 320, child: _buildTopDonors(donations)),
-                    ],
-                  ),
+    if (dashboardAsync.hasError) {
+      return Scaffold(body: Center(child: Text('ত্রুটি: ${dashboardAsync.error}')));
+    }
+    if (donationsAsync.hasError) {
+      return Scaffold(body: Center(child: Text('ত্রুটি: ${donationsAsync.error}')));
+    }
+    if (topDonorsAsync.hasError) {
+      return Scaffold(body: Center(child: Text('ত্রুটি: ${topDonorsAsync.error}')));
+    }
+
+    final overview = dashboardAsync.requireValue;
+    final donations = donationsAsync.requireValue;
+    final topDonors = topDonorsAsync.requireValue;
+
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.xxxl,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const FadeSlideIn(delay: 0, child: _DonationHeader()),
+              AppSpacing.hLg,
+              FadeSlideIn(
+                delay: 80, 
+                child: _FundOverviewCard(collectedAmount: overview.totalFundCollected),
+              ),
+              AppSpacing.hXxl,
+              FadeSlideIn(
+                delay: 160, 
+                child: _CategoryFilters(
+                  selectedCategory: _selectedCategory,
+                  onSelected: (cat) => setState(() => _selectedCategory = cat),
                 ),
               ),
-              floatingActionButton: Padding(
-                padding: const EdgeInsets.only(bottom: 72.0),
-                child: FloatingActionButton.extended(
-                  onPressed: () => context.push('/donate/checkout'),
-                  icon: const Icon(Icons.add, size: 20),
-                  label: const Text('নতুন দান'),
-                ),
+              AppSpacing.hXxl,
+              FadeSlideIn(
+                delay: 240, 
+                child: _RecentDonationsSection(donations: donations),
               ),
-            );
-          },
-        );
-      },
+              AppSpacing.hXxl,
+              FadeSlideIn(
+                delay: 320, 
+                child: _TopDonorsSection(topDonors: topDonors),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 72.0),
+        child: FloatingActionButton.extended(
+          onPressed: () => context.push('/donate/checkout'),
+          icon: const Icon(Icons.add, size: 20),
+          label: const Text('নতুন দান'),
+        ),
+      ),
     );
   }
+}
 
-  Widget _buildHeader() {
+class _DonationHeader extends StatelessWidget {
+  const _DonationHeader();
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -113,10 +137,18 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
       ],
     );
   }
+}
 
-  Widget _buildFundOverview(double collectedAmount) {
+class _FundOverviewCard extends StatelessWidget {
+  final double collectedAmount;
+
+  const _FundOverviewCard({required this.collectedAmount});
+
+  static final _format = NumberFormat('#,##0');
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = context.isDark;
-    final format = NumberFormat('#,##0');
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -177,7 +209,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
             ),
             AppSpacing.hXs,
             Text(
-              '৳${format.format(collectedAmount)}',
+              '৳${_format.format(collectedAmount)}',
               style: GoogleFonts.notoSansBengali(
                 textStyle: context.textTheme.displaySmall?.copyWith(
                   color: Colors.white,
@@ -206,9 +238,28 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
       ),
     );
   }
+}
 
-  Widget _buildCategories() {
-    final categories = ['সব', 'জরুরি তহবিল', 'মসজিদ', 'শিক্ষা', 'স্বাস্থ্য', 'রাস্তা মেরামত'];
+class _CategoryFilters extends StatelessWidget {
+  final String selectedCategory;
+  final ValueChanged<String> onSelected;
+
+  const _CategoryFilters({
+    required this.selectedCategory,
+    required this.onSelected,
+  });
+
+  static const _categories = [
+    'সব', 
+    'জরুরি তহবিল', 
+    'মসজিদ', 
+    'শিক্ষা', 
+    'স্বাস্থ্য', 
+    'রাস্তা মেরামত'
+  ];
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -228,16 +279,16 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            itemCount: categories.length,
+            itemCount: _categories.length,
             separatorBuilder: (_, _) => AppSpacing.wSm,
             itemBuilder: (context, index) {
-              final cat = categories[index];
-              final selected = _selectedCategory == cat;
+              final cat = _categories[index];
+              final selected = selectedCategory == cat;
               return ChoiceChip(
                 label: Text(cat),
                 selected: selected,
                 onSelected: (val) {
-                  if (val) setState(() => _selectedCategory = cat);
+                  if (val) onSelected(cat);
                 },
                 labelStyle: context.textTheme.labelMedium?.copyWith(
                   color: selected ? AppColors.primary : context.textSecondary,
@@ -257,9 +308,17 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
       ],
     );
   }
+}
 
-  Widget _buildRecentDonations(List<Donation> donations) {
-    final format = NumberFormat('#,##0');
+class _RecentDonationsSection extends StatelessWidget {
+  final List<Donation> donations;
+
+  const _RecentDonationsSection({required this.donations});
+
+  static final _format = NumberFormat('#,##0');
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -281,7 +340,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
                     iconColor: AppColors.success,
                     timestamp: d.createdAt,
                     trailing: Text(
-                      '৳${format.format(d.amount)}',
+                      '৳${_format.format(d.amount)}',
                       style: context.textTheme.labelLarge?.copyWith(
                         color: AppColors.success,
                         fontWeight: FontWeight.w700,
@@ -301,18 +360,22 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
       ],
     );
   }
+}
 
-  Widget _buildTopDonors(List<Donation> donations) {
-    final format = NumberFormat('#,##0');
-    final totals = <String, double>{};
-    for (final d in donations) {
-      if (d.donorName.isNotEmpty) {
-        totals[d.donorName] = (totals[d.donorName] ?? 0) + d.amount;
-      }
-    }
-    final sorted = totals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final top = sorted.take(5).toList();
+class _TopDonorsSection extends StatelessWidget {
+  final List<MapEntry<String, double>> topDonors;
 
+  const _TopDonorsSection({required this.topDonors});
+
+  static final _format = NumberFormat('#,##0');
+
+  String _initials(String name) {
+    if (name.length >= 2) return name.substring(0, 2);
+    return name.isNotEmpty ? name[0] : '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -327,10 +390,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            itemCount: top.length,
+            itemCount: topDonors.length,
             separatorBuilder: (_, _) => AppSpacing.wMd,
             itemBuilder: (context, index) {
-              final entry = top[index];
+              final entry = topDonors[index];
               return SizedBox(
                 width: 104,
                 child: PressScale(
@@ -384,7 +447,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
                         ),
                         AppSpacing.hXs,
                         Text(
-                          '৳${format.format(entry.value)}',
+                          '৳${_format.format(entry.value)}',
                           style: context.textTheme.labelSmall?.copyWith(
                             color: context.primary,
                             fontWeight: FontWeight.w700,
@@ -401,10 +464,4 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
       ],
     );
   }
-
-  String _initials(String name) {
-    if (name.length >= 2) return name.substring(0, 2);
-    return name.isNotEmpty ? name[0] : '';
-  }
 }
-

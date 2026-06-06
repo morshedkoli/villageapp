@@ -38,7 +38,7 @@ class _VillageDevelopmentAppState extends ConsumerState<VillageDevelopmentApp> {
     return MaterialApp.router(
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
-      title: 'গ্রামবাসী',
+      title: 'আল ইসলাহ',
       locale: Locale(settings.languageCode),
       supportedLocales: const [Locale('en'), Locale('bn')],
       localizationsDelegates: const [

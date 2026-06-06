@@ -195,7 +195,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'গ্রামবাসী',
+                            'আল ইসলাহ',
                             style: context.textTheme.bodyLarge?.copyWith(
                               color: context.textPrimary,
                               fontWeight: FontWeight.w600,
@@ -218,7 +218,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   AppSpacing.hMd,
                   Text(
-                    'গ্রামবাসী একটি কমিউনিটি প্ল্যাটফর্ম যা গ্রামের মানুষকে '
+                    'আল ইসলাহ একটি কমিউনিটি প্ল্যাটফর্ম যা গ্রামের মানুষকে '
                     'সংযুক্ত করে, সমস্যা রিপোর্ট করা, প্রকল্পে অংশগ্রহণ এবং '
                     'একে অপরকে সাহায্য করার সুযোগ করে দেয়।',
                     style: context.textTheme.bodySmall?.copyWith(

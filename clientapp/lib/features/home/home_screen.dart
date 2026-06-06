@@ -154,7 +154,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
               const SizedBox(height: 2),
               Text(
-                'গ্রামবাসী কমিউনিটি',
+                'আল ইসলাহ কমিউনিটি',
                 style: AppTypography.sectionTitle.copyWith(
                   color: context.textPrimary,
                   fontSize: 22,

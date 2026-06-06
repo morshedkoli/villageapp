@@ -89,3 +89,102 @@ final currentUserProfileProvider =
   ref.watch(currentFirebaseUserProvider);
   return DataService.instance.getUserProfile();
 });
+
+final topDonorsProvider = Provider<AsyncValue<List<MapEntry<String, double>>>>((ref) {
+  return ref.watch(donationsProvider).whenData((donations) {
+    final totals = <String, double>{};
+    for (final d in donations) {
+      if (d.donorName.isNotEmpty) {
+        totals[d.donorName] = (totals[d.donorName] ?? 0) + d.amount;
+      }
+    }
+    final sorted = totals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    return sorted.take(5).toList();
+  });
+});
+
+class ExpenseSearchNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+  void setQuery(String query) => state = query;
+}
+final expenseSearchQueryProvider = NotifierProvider<ExpenseSearchNotifier, String>(ExpenseSearchNotifier.new);
+
+class ExpenseSortNotifier extends Notifier<bool> {
+  @override
+  bool build() => true;
+  void setSort(bool newestFirst) => state = newestFirst;
+}
+final expenseSortNewestFirstProvider = NotifierProvider<ExpenseSortNotifier, bool>(ExpenseSortNotifier.new);
+
+final filteredExpensesProvider = Provider<AsyncValue<List<FundTransaction>>>((ref) {
+  final txsAsync = ref.watch(fundTransactionsProvider);
+  final search = ref.watch(expenseSearchQueryProvider);
+  final newestFirst = ref.watch(expenseSortNewestFirstProvider);
+
+  return txsAsync.whenData((allTx) {
+    final expenses = allTx.where((t) => t.isExpense).toList();
+    final query = search.trim().toLowerCase();
+    
+    final filtered = query.isEmpty
+        ? expenses
+        : expenses
+            .where((t) =>
+                t.reference.toLowerCase().contains(query) ||
+                t.note.toLowerCase().contains(query) ||
+                t.amount.toString().contains(query))
+            .toList();
+
+    if (newestFirst) {
+      filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    } else {
+      filtered.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    }
+    return filtered;
+  });
+});
+
+class DonationSearchNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+  void setQuery(String query) => state = query;
+}
+final donationSearchQueryProvider = NotifierProvider<DonationSearchNotifier, String>(DonationSearchNotifier.new);
+
+class DonationSortNotifier extends Notifier<String> {
+  @override
+  String build() => 'newest';
+  void setSort(String sortType) => state = sortType;
+}
+final donationSortProvider = NotifierProvider<DonationSortNotifier, String>(DonationSortNotifier.new);
+
+final filteredDonationsProvider = Provider<AsyncValue<List<Donation>>>((ref) {
+  final donationsAsync = ref.watch(donationsProvider);
+  final search = ref.watch(donationSearchQueryProvider);
+  final sort = ref.watch(donationSortProvider);
+
+  return donationsAsync.whenData((all) {
+    var list = all.where((d) {
+      if (search.isEmpty) return true;
+      return d.donorName.toLowerCase().contains(search) ||
+          d.amount.toString().contains(search) ||
+          d.paymentMethod.toLowerCase().contains(search);
+    }).toList();
+
+    if (sort == 'newest') {
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    } else {
+      list.sort((a, b) => b.amount.compareTo(a.amount));
+    }
+    return list;
+  });
+});
+
+final totalExpensesProvider = Provider<AsyncValue<double>>((ref) {
+  return ref.watch(fundTransactionsProvider).whenData((allTx) {
+    return allTx.where((t) => t.isExpense).fold<double>(0.0, (sum, t) => sum + t.amount);
+  });
+});
+
+
+

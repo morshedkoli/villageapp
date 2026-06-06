@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lottie/lottie.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/theme/app_radius.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -132,20 +132,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     ),
                   );
                 },
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(AppRadius.xxl),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.xxl - 1),
-                    child: Image.asset('assets/logo.png', fit: BoxFit.cover),
+                child: SizedBox(
+                  width: 300,
+                  height: 300,
+                  child: Lottie.asset(
+                    'assets/charity_animation.json',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.volunteer_activism, size: 80, color: Colors.white),
                   ),
                 ),
               ),
@@ -157,7 +150,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   child: Column(
                     children: [
                       Text(
-                        'গ্রামবাসী',
+                        'আল ইসলাহ',
                         style: TextStyle(
                           fontSize: 36,
                           fontWeight: FontWeight.w700,

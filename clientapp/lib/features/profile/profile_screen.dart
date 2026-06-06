@@ -138,7 +138,7 @@ class _LoginGateState extends State<_LoginGate> {
                   FadeSlideIn(
                     delay: 80,
                     child: Text(
-                      'গ্রামবাসীতে স্বাগতম',
+                      'আল ইসলাহ-তে স্বাগতম',
                       style: context.textTheme.headlineSmall?.copyWith(
                         color: context.textPrimary,
                         fontWeight: FontWeight.w800,

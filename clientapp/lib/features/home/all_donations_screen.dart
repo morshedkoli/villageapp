@@ -19,8 +19,6 @@ class AllDonationsScreen extends ConsumerStatefulWidget {
 class _AllDonationsScreenState extends ConsumerState<AllDonationsScreen> {
   final _fmt = NumberFormat('#,##0');
   final _searchCtrl = TextEditingController();
-  String _search = '';
-  String _sort = 'newest'; // newest | highest
 
   @override
   void dispose() {
@@ -28,25 +26,10 @@ class _AllDonationsScreenState extends ConsumerState<AllDonationsScreen> {
     super.dispose();
   }
 
-  List<Donation> _apply(List<Donation> all) {
-    var list = all.where((d) {
-      if (_search.isEmpty) return true;
-      return d.donorName.toLowerCase().contains(_search) ||
-          d.amount.toString().contains(_search) ||
-          d.paymentMethod.toLowerCase().contains(_search);
-    }).toList();
-
-    if (_sort == 'newest') {
-      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    } else {
-      list.sort((a, b) => b.amount.compareTo(a.amount));
-    }
-    return list;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(donationsProvider);
+    final async = ref.watch(filteredDonationsProvider);
+    final sort = ref.watch(donationSortProvider);
 
     return Scaffold(
       backgroundColor: context.canvas,
@@ -56,14 +39,13 @@ class _AllDonationsScreenState extends ConsumerState<AllDonationsScreen> {
         foregroundColor: context.textPrimary,
         elevation: 0,
         actions: [
-          _SortButton(current: _sort, onChange: (v) => setState(() => _sort = v)),
+          _SortButton(current: sort, onChange: (v) => ref.read(donationSortProvider.notifier).setSort(v)),
         ],
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('ত্রুটি: $e')),
-        data: (all) {
-          final filtered = _apply(all);
+        data: (filtered) {
           final total = filtered.fold<double>(0, (s, d) => s + d.amount);
 
           return Column(
@@ -75,7 +57,7 @@ class _AllDonationsScreenState extends ConsumerState<AllDonationsScreen> {
                 ),
                 child: TextField(
                   controller: _searchCtrl,
-                  onChanged: (v) => setState(() => _search = v.trim().toLowerCase()),
+                  onChanged: (v) => ref.read(donationSearchQueryProvider.notifier).setQuery(v.trim().toLowerCase()),
                   decoration: InputDecoration(
                     hintText: 'দাতার নাম বা পরিমাণ অনুসন্ধান...',
                     prefixIcon: Icon(Icons.search, color: context.textSecondary),

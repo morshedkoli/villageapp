@@ -110,55 +110,69 @@ class _ProblemsScreenState extends ConsumerState<ProblemsScreen> {
   }
 
   Widget _buildStatsGrid() {
+    final problemsAsync = ref.watch(problemsProvider);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      child: Column(
-        children: [
-          Row(
+      child: problemsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => const Center(child: Text('তথ্য লোড করতে ত্রুটি')),
+        data: (problems) {
+          final total = problems.length;
+          final pending = problems.where((p) => p.status.toLowerCase() == 'pending' || p.status.toLowerCase() == 'under_review').length;
+          final inProgress = problems.where((p) => p.status.toLowerCase() == 'in_progress').length;
+          final resolved = problems.where((p) => p.status.toLowerCase() == 'resolved').length;
+          final percentage = total == 0 ? 0 : ((resolved / total) * 100).toInt();
+
+          return Column(
             children: [
-              const Expanded(
-                child: KpiCard(
-                  label: 'মোট রিপোর্ট',
-                  value: '৪২',
-                  icon: Icons.assignment_outlined,
-                  iconBackground: Color(0xFF3B82F6),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: KpiCard(
+                      label: 'মোট রিপোর্ট',
+                      value: '$total',
+                      icon: Icons.assignment_outlined,
+                      iconBackground: const Color(0xFF3B82F6),
+                    ),
+                  ),
+                  AppSpacing.wMd,
+                  Expanded(
+                    child: KpiCard(
+                      label: 'বিচারাধীন',
+                      value: '$pending',
+                      icon: Icons.schedule_outlined,
+                      iconBackground: const Color(0xFFF59E0B),
+                    ),
+                  ),
+                ],
               ),
-              AppSpacing.wMd,
-              const Expanded(
-                child: KpiCard(
-                  label: 'বিচারাধীন',
-                  value: '১৫',
-                  icon: Icons.schedule_outlined,
-                  iconBackground: Color(0xFFF59E0B),
-                ),
+              AppSpacing.hMd,
+              Row(
+                children: [
+                  Expanded(
+                    child: KpiCard(
+                      label: 'প্রক্রিয়াধীন',
+                      value: '$inProgress',
+                      icon: Icons.sync_outlined,
+                      iconBackground: const Color(0xFF3B82F6),
+                    ),
+                  ),
+                  AppSpacing.wMd,
+                  Expanded(
+                    child: KpiCard(
+                      label: 'সমাধানকৃত',
+                      value: '$resolved',
+                      icon: Icons.task_alt,
+                      subtitle: '$percentage%',
+                      iconBackground: AppColors.success.withValues(alpha: 0.15),
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-          AppSpacing.hMd,
-          Row(
-            children: [
-              const Expanded(
-                child: KpiCard(
-                  label: 'প্রক্রিয়াধীন',
-                  value: '১২',
-                  icon: Icons.sync_outlined,
-                  iconBackground: Color(0xFF3B82F6),
-                ),
-              ),
-              AppSpacing.wMd,
-              Expanded(
-                child: KpiCard(
-                  label: 'সমাধানকৃত',
-                  value: '১৫',
-                  icon: Icons.task_alt,
-                  subtitle: '৩৬%',
-                  iconBackground: AppColors.success.withValues(alpha: 0.15),
-                ),
-              ),
-            ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }

@@ -44,3 +44,4 @@ flutter:
     - assets/logo.png
     - assets/login_animation.json
     - assets/village_animation.json
+    - assets/charity_animation.json

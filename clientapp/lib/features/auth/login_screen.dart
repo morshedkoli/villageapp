@@ -66,7 +66,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     AppSpacing.hLg,
                     Text(
-                      'গ্রামবাসী',
+                      'আল ইসলাহ',
                       style: context.textTheme.headlineMedium?.copyWith(
                         color: context.textPrimary,
                         fontWeight: FontWeight.w700,
@@ -105,7 +105,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                           child: Text(
-                            'গ্রামবাসী কেন?',
+                            'আল ইসলাহ কেন?',
                             style: context.textTheme.labelLarge?.copyWith(
                               color: context.textSecondary,
                             ),
