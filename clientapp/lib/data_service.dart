@@ -78,8 +78,14 @@ class DataService {
     // Ensure a clean session before opening the account picker.
     await GoogleSignIn.instance.signOut();
     final googleUser = await GoogleSignIn.instance.authenticate();
+    
+    if (googleUser == null) {
+      return false; // User canceled sign in
+    }
+
     final googleAuth = googleUser.authentication;
-    final googleAuthz = await googleUser.authorizationClient.authorizationForScopes([]);
+    // Request basic scopes to get an access token and prevent 'requestedScopes cannot be empty' exception
+    final googleAuthz = await googleUser.authorizationClient.authorizationForScopes(['email', 'profile']);
     
     final credential = GoogleAuthProvider.credential(
       accessToken: googleAuthz?.accessToken,
