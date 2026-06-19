@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lottie/lottie.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../data_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -88,10 +89,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final prefs = await SharedPreferences.getInstance();
     final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
 
+    // Check Firebase Auth state — never skip login for unauthenticated users.
+    final user = DataService.instance.currentUser;
+
     if (!mounted) return;
-    if (onboardingComplete) {
+    if (user != null) {
+      // Already signed in → go home.
       context.go('/home');
+    } else if (onboardingComplete) {
+      // Seen onboarding before → go straight to login.
+      context.go('/login');
     } else {
+      // First launch → show onboarding.
       context.go('/onboarding');
     }
   }
