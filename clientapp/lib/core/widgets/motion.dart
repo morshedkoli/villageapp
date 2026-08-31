@@ -22,7 +22,7 @@ class FadeSlideIn extends StatefulWidget {
     this.delay = 0,
     this.duration = const Duration(milliseconds: 450),
     this.offset = 18,
-    this.curve = Curves.easeOutCubic,
+    this.curve = Curves.easeOutBack,
   });
 
   @override
@@ -199,7 +199,7 @@ class _AnimatedCountState extends State<AnimatedCount>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, _) => Text(
+      builder: (_, __) => Text(
         '${widget.prefix}${(widget.target * _anim.value).round()}${widget.suffix}',
         style: widget.style,
       ),
