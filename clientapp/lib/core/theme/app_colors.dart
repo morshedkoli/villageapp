@@ -8,86 +8,84 @@ import 'package:flutter/material.dart';
 abstract final class AppColors {
   AppColors._();
 
-  // ── Brand Green ──────────────────────────────
-  /// Primary action color — vibrant but not harsh
-  static const Color primary = Color(0xFF22C55E);
+  // ── Brand Moss Green ─────────────────────────
+  /// Primary action color — warm moss green
+  static const Color primary = Color(0xFF3F8A4E);
 
   /// Pressed / gradient end
-  static const Color primaryDark = Color(0xFF16A34A);
+  static const Color primaryDark = Color(0xFF2E6B3D);
 
   /// Hover / gradient start (lighter)
-  static const Color primaryLight = Color(0xFF4ADE80);
+  static const Color primaryLight = Color(0xFF6FAE6E);
 
   /// Muted green for dark-mode secondary
-  static const Color primaryMuted = Color(0xFF86EFAC);
+  static const Color primaryMuted = Color(0xFF9BC49A);
 
   /// Tinted surface — chip, badge backgrounds
-  static const Color primaryContainer = Color(0xFFF0FDF4);
+  static const Color primaryContainer = Color(0xFFEEF3E7);
+
+  // ── Warm Accents ─────────────────────────────
+  /// CTAs, highlights, one of the icon-badge rotation colors
+  static const Color accentTerracotta = Color(0xFFD97757);
+
+  /// Achievements, top-contributor badges, warning color
+  static const Color accentGold = Color(0xFFE8A94C);
 
   // ── Semantic ─────────────────────────────────
-  static const Color success = Color(0xFF16A34A);
-  static const Color successLight = Color(0xFF22C55E);
-  static const Color successContainer = Color(0xFFF0FDF4);
+  static const Color success = Color(0xFF2E6B3D);
+  static const Color successLight = Color(0xFF3F8A4E);
+  static const Color successContainer = Color(0xFFEEF3E7);
 
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color warningContainer = Color(0xFFFFFBEB);
+  static const Color warning = accentGold;
+  static const Color warningContainer = Color(0xFFFBF3E4);
 
-  static const Color error = Color(0xFFE53E3E);
-  static const Color errorContainer = Color(0xFFFFF5F5);
+  static const Color error = Color(0xFFC1502E);
+  static const Color errorContainer = Color(0xFFFBEEE8);
 
-  static const Color info = Color(0xFF3B82F6);
-  static const Color infoContainer = Color(0xFFEFF6FF);
+  static const Color info = Color(0xFF3B6E8F);
+  static const Color infoContainer = Color(0xFFE9F0F4);
 
   // ── Text ─────────────────────────────────────
-  static const Color ink900 = Color(0xFF0D1117);   // Near black — headlines
-  static const Color ink700 = Color(0xFF374151);   // Body text
-  static const Color ink500 = Color(0xFF6B7280);   // Secondary text
-  static const Color ink300 = Color(0xFF9CA3AF);   // Tertiary / placeholder
+  static const Color ink900 = Color(0xFF1B1712);   // Near black — headlines
+  static const Color ink700 = Color(0xFF433C33);   // Body text
+  static const Color ink500 = Color(0xFF766D5F);   // Secondary text
+  static const Color ink300 = Color(0xFFAEA595);   // Tertiary / placeholder
   static const Color inkOnPrimary = Color(0xFFFFFFFF);
 
-  // ── Backward-compat static aliases ───────────
-  /// @deprecated Use lightCanvas instead
-  static const Color lightBackground = Color(0xFFF9FAFB);  // = lightCanvas
-  /// @deprecated Use ink500 or context.textSecondary instead
-  static const Color textSecondary = ink500;
-  /// @deprecated Use ink300 or context.textTertiary instead
-  static const Color textTertiary = ink300;
-
-
   // ── Light Surface System ──────────────────────
-  /// True off-white — main page background
-  static const Color lightCanvas = Color(0xFFF9FAFB);
+  /// Warm cream — main page background
+  static const Color lightCanvas = Color(0xFFFBF8F3);
 
   /// Pure white — card / surface
   static const Color lightSurface = Color(0xFFFFFFFF);
 
-  /// Very subtle border (almost invisible)
-  static const Color lightBorder = Color(0xFFE5E7EB);
+  /// Warm tan-gray border
+  static const Color lightBorder = Color(0xFFE8E0D4);
 
   /// Slightly more visible divider
-  static const Color lightDivider = Color(0xFFF3F4F6);
+  static const Color lightDivider = Color(0xFFF1ECE1);
 
   /// Input field fill
-  static const Color lightInputFill = Color(0xFFF9FAFB);
+  static const Color lightInputFill = Color(0xFFFBF8F3);
 
   // ── Dark Surface System ───────────────────────
-  /// Deep dark background — warm black-green tint
-  static const Color darkCanvas = Color(0xFF0C0F0E);
+  /// Deep warm near-black background
+  static const Color darkCanvas = Color(0xFF14120F);
 
   /// Card / elevated surface in dark
-  static const Color darkSurface = Color(0xFF161B19);
+  static const Color darkSurface = Color(0xFF1C1814);
 
   /// Slightly lighter card for nested elements
-  static const Color darkCard = Color(0xFF1C2420);
+  static const Color darkCard = Color(0xFF241F18);
 
-  /// Visible but subtle border in dark
-  static const Color darkBorder = Color(0xFF2C3531);
+  /// Visible but subtle warm border in dark
+  static const Color darkBorder = Color(0xFF33291F);
 
   /// Softer divider in dark
-  static const Color darkDivider = Color(0xFF232B28);
+  static const Color darkDivider = Color(0xFF2A2319);
 
   /// Input fill in dark
-  static const Color darkInputFill = Color(0xFF1C2420);
+  static const Color darkInputFill = Color(0xFF241F18);
 
   // ── Shadows ───────────────────────────────────
   /// Card drop shadow color (light mode)
@@ -110,6 +108,8 @@ extension ContextColors on BuildContext {
   Color get primaryLight  => AppColors.primaryLight;
   Color get onPrimary     => AppColors.inkOnPrimary;
   Color get primaryContainer => AppColors.primaryContainer;
+  Color get accentTerracotta => AppColors.accentTerracotta;
+  Color get accentGold       => AppColors.accentGold;
 
   // Semantic
   Color get success           => AppColors.success;

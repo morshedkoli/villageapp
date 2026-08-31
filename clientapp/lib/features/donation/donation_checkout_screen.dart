@@ -8,6 +8,8 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/motion.dart';
+import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/loading_shimmer.dart';
 import '../../core/providers/providers.dart';
 import '../../data_service.dart';
 
@@ -75,11 +77,31 @@ class _DonationCheckoutScreenState
     final accountsAsync = ref.watch(donationAccountsProvider);
 
     return Scaffold(
+      backgroundColor: context.canvas,
       appBar: AppBar(title: const Text('দান সম্পন্ন করুন')),
       body: SafeArea(
         child: accountsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('ত্রুটি: $e')),
+          loading: () => Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              children: const [
+                CardSkeleton(height: 72),
+                SizedBox(height: AppSpacing.md),
+                CardSkeleton(height: 72),
+                SizedBox(height: AppSpacing.md),
+                CardSkeleton(height: 72),
+              ],
+            ),
+          ),
+          error: (e, _) => Center(
+            child: EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'একাউন্ট তথ্য লোড করা যায়নি',
+              subtitle: 'ইন্টারনেট সংযোগ চেক করে পুনরায় চেষ্টা করুন',
+              actionLabel: 'পুনরায় চেষ্টা করুন',
+              onAction: () => ref.invalidate(donationAccountsProvider),
+            ),
+          ),
           data: (accounts) {
             final active = accounts
                 .where((a) => a['type']?.isNotEmpty == true)
@@ -438,7 +460,7 @@ class _DonationCheckoutScreenState
               ),
               selectedColor: AppColors.primary.withValues(alpha: 0.12),
               backgroundColor:
-                  context.isDark ? AppColors.darkCard : AppColors.lightBackground,
+                  context.isDark ? AppColors.darkCard : AppColors.lightCanvas,
               side: BorderSide.none,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.full),

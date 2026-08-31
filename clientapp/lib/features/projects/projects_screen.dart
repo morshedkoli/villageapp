@@ -89,21 +89,29 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
               onAction: () => ref.invalidate(projectsProvider),
             ),
           ),
-          data: (projects) => SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.xxxl,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FadeSlideIn(delay: 0, child: _buildHeader()),
-                AppSpacing.hLg,
-                FadeSlideIn(delay: 80, child: _buildStatsRow(projects)),
-                AppSpacing.hXxl,
-                FadeSlideIn(delay: 160, child: _buildFilterChips()),
-                AppSpacing.hLg,
-                FadeSlideIn(delay: 240, child: _buildProjectList(projects)),
-              ],
+          data: (projects) => RefreshIndicator(
+            color: AppColors.primary,
+            backgroundColor: context.surface,
+            onRefresh: () async {
+              ref.invalidate(projectsProvider);
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.massive,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FadeSlideIn(delay: 0, child: _buildHeader()),
+                  AppSpacing.hLg,
+                  FadeSlideIn(delay: 80, child: _buildStatsRow(projects)),
+                  AppSpacing.hXxl,
+                  FadeSlideIn(delay: 160, child: _buildFilterChips()),
+                  AppSpacing.hLg,
+                  FadeSlideIn(delay: 240, child: _buildProjectList(projects)),
+                ],
+              ),
             ),
           ),
         ),
@@ -203,7 +211,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: _filters.length,
-            separatorBuilder: (_, _) => AppSpacing.wSm,
+            separatorBuilder: (_, __) => AppSpacing.wSm,
             itemBuilder: (context, index) {
               final filter = _filters[index];
               final selected = _selectedFilter == filter;
@@ -218,7 +226,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
                 selectedColor: AppColors.primary.withValues(alpha: 0.12),
-                backgroundColor: context.isDark ? AppColors.darkCard : AppColors.lightBackground,
+                backgroundColor: context.isDark ? AppColors.darkCard : AppColors.lightCanvas,
                 side: BorderSide.none,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.full),

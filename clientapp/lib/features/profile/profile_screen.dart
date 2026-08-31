@@ -9,6 +9,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/motion.dart';
+import '../../core/widgets/loading_shimmer.dart';
 import '../../core/providers/providers.dart';
 import '../../data_service.dart';
 import '../../models.dart';
@@ -26,8 +27,22 @@ class ProfileScreen extends ConsumerWidget {
     final firebaseUser = ref.watch(currentFirebaseUserProvider).asData?.value;
 
     return authAsync.when(
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (_, _) => const _LoginGate(),
+      loading: () => Scaffold(
+        backgroundColor: context.canvas,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              children: const [
+                CardSkeleton(height: 180),
+                SizedBox(height: AppSpacing.lg),
+                Expanded(child: ListSkeleton(itemCount: 5)),
+              ],
+            ),
+          ),
+        ),
+      ),
+      error: (_, __) => const _LoginGate(),
       data: (isAuthenticated) =>
           isAuthenticated ? _ProfileBody(firebaseUser: firebaseUser) : const _LoginGate(),
     );
@@ -213,7 +228,7 @@ class _LoginGateState extends State<_LoginGate> {
                                   Image.network(
                                     'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png',
                                     height: 22,
-                                    errorBuilder: (_, _, _) =>
+                                    errorBuilder: (_, __, ___) =>
                                         const Icon(Icons.g_mobiledata, size: 26, color: AppColors.primary),
                                   ),
                                   AppSpacing.wMd,
@@ -1243,7 +1258,7 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
             prefixIcon: Icon(icon, size: 20, color: context.textTertiary),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: isDark ? AppColors.darkCard : AppColors.lightBackground,
+            fillColor: isDark ? AppColors.darkCard : AppColors.lightCanvas,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.lg),
               borderSide: BorderSide.none,

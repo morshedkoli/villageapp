@@ -336,7 +336,7 @@ class _VoteButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: active
               ? color.withValues(alpha: 0.12)
-              : (context.isDark ? AppColors.darkBorder : AppColors.lightBackground),
+              : (context.isDark ? AppColors.darkBorder : AppColors.lightCanvas),
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(
             color: active ? color.withValues(alpha: 0.35) : Colors.transparent,

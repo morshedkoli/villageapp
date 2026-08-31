@@ -31,22 +31,31 @@ class _ProblemsScreenState extends ConsumerState<ProblemsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: context.canvas,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.xxxl,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FadeSlideIn(delay: 0, child: _buildHeader()),
-              AppSpacing.hLg,
-              FadeSlideIn(delay: 80, child: _buildStatsGrid()),
-              AppSpacing.hXxl,
-              FadeSlideIn(delay: 160, child: _buildFilterChips()),
-              AppSpacing.hLg,
-              FadeSlideIn(delay: 240, child: _buildProblemList()),
-            ],
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          backgroundColor: context.surface,
+          onRefresh: () async {
+            ref.invalidate(problemsProvider);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.massive,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FadeSlideIn(delay: 0, child: _buildHeader()),
+                AppSpacing.hLg,
+                FadeSlideIn(delay: 80, child: _buildStatsGrid()),
+                AppSpacing.hXxl,
+                FadeSlideIn(delay: 160, child: _buildFilterChips()),
+                AppSpacing.hLg,
+                FadeSlideIn(delay: 240, child: _buildProblemList()),
+              ],
+            ),
           ),
         ),
       ),
@@ -56,7 +65,7 @@ class _ProblemsScreenState extends ConsumerState<ProblemsScreen> {
           onPressed: () {
             final isAuthenticated = ref
                 .read(isAuthenticatedProvider)
-                .when(data: (v) => v, error: (_, _) => false, loading: () => false);
+                .when(data: (v) => v, error: (_, __) => false, loading: () => false);
             if (isAuthenticated) {
               context.push('/problems/report');
             } else {
@@ -133,7 +142,7 @@ class _ProblemsScreenState extends ConsumerState<ProblemsScreen> {
           ),
         ],
       ),
-      error: (_, _) => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
       data: (problems) {
           final total = problems.length;
           final pending = problems.where((p) => p.status.toLowerCase() == 'pending' || p.status.toLowerCase() == 'under_review').length;
@@ -190,8 +199,7 @@ class _ProblemsScreenState extends ConsumerState<ProblemsScreen> {
             ],
           );
         },
-      ),
-    );
+      );
   }
 
   Widget _buildFilterChips() {
@@ -213,7 +221,7 @@ class _ProblemsScreenState extends ConsumerState<ProblemsScreen> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _filters.length,
-              separatorBuilder: (_, _) => AppSpacing.wSm,
+              separatorBuilder: (_, __) => AppSpacing.wSm,
               itemBuilder: (context, index) {
                 final filter = _filters[index];
                 final selected = _selectedFilter == filter;
@@ -228,7 +236,7 @@ class _ProblemsScreenState extends ConsumerState<ProblemsScreen> {
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
                   selectedColor: AppColors.primary.withValues(alpha: 0.12),
-                  backgroundColor: context.isDark ? AppColors.darkCard : AppColors.lightBackground,
+                  backgroundColor: context.isDark ? AppColors.darkCard : AppColors.lightCanvas,
                   side: BorderSide.none,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppRadius.full),

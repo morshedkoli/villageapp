@@ -88,39 +88,50 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
     final topDonors = topDonorsAsync.valueOrNull ?? [];
 
     return Scaffold(
+      backgroundColor: context.canvas,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.xxxl,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const FadeSlideIn(delay: 0, child: _DonationHeader()),
-              AppSpacing.hLg,
-              FadeSlideIn(
-                delay: 80, 
-                child: _FundOverviewCard(collectedAmount: overview.totalFundCollected),
-              ),
-              AppSpacing.hXxl,
-              FadeSlideIn(
-                delay: 160, 
-                child: _CategoryFilters(
-                  selectedCategory: _selectedCategory,
-                  onSelected: (cat) => setState(() => _selectedCategory = cat),
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          backgroundColor: context.surface,
+          onRefresh: () async {
+            ref.invalidate(dashboardProvider);
+            ref.invalidate(recentDonationsProvider);
+            ref.invalidate(topDonorsProvider);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.massive,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const FadeSlideIn(delay: 0, child: _DonationHeader()),
+                AppSpacing.hLg,
+                FadeSlideIn(
+                  delay: 80, 
+                  child: _FundOverviewCard(collectedAmount: overview.totalFundCollected),
                 ),
-              ),
-              AppSpacing.hXxl,
-              FadeSlideIn(
-                delay: 240, 
-                child: _RecentDonationsSection(donations: donations),
-              ),
-              AppSpacing.hXxl,
-              FadeSlideIn(
-                delay: 320, 
-                child: _TopDonorsSection(topDonors: topDonors),
-              ),
-            ],
+                AppSpacing.hXxl,
+                FadeSlideIn(
+                  delay: 160, 
+                  child: _CategoryFilters(
+                    selectedCategory: _selectedCategory,
+                    onSelected: (cat) => setState(() => _selectedCategory = cat),
+                  ),
+                ),
+                AppSpacing.hXxl,
+                FadeSlideIn(
+                  delay: 240, 
+                  child: _RecentDonationsSection(donations: donations),
+                ),
+                AppSpacing.hXxl,
+                FadeSlideIn(
+                  delay: 320, 
+                  child: _TopDonorsSection(topDonors: topDonors),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -318,7 +329,7 @@ class _CategoryFilters extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             itemCount: _categories.length,
-            separatorBuilder: (_, _) => AppSpacing.wSm,
+            separatorBuilder: (_, __) => AppSpacing.wSm,
             itemBuilder: (context, index) {
               final cat = _categories[index];
               final selected = selectedCategory == cat;
@@ -333,7 +344,7 @@ class _CategoryFilters extends StatelessWidget {
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
                 selectedColor: AppColors.primary.withValues(alpha: 0.12),
-                backgroundColor: context.isDark ? AppColors.darkCard : AppColors.lightBackground,
+                backgroundColor: context.isDark ? AppColors.darkCard : AppColors.lightCanvas,
                 side: BorderSide.none,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.full),
@@ -429,7 +440,7 @@ class _TopDonorsSection extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             itemCount: topDonors.length,
-            separatorBuilder: (_, _) => AppSpacing.wMd,
+            separatorBuilder: (_, __) => AppSpacing.wMd,
             itemBuilder: (context, index) {
               final entry = topDonors[index];
               return SizedBox(
