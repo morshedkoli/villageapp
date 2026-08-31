@@ -116,7 +116,7 @@ abstract final class AppTheme {
         color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.xxlBorder,
+          borderRadius: AppRadius.xxxlBorder,
           side: BorderSide(
             color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
             width: 1,

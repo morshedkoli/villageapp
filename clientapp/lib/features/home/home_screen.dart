@@ -321,9 +321,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         borderRadius: BorderRadius.circular(AppRadius.xxxl),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.28),
-            blurRadius: 28,
-            offset: const Offset(0, 10),
+            color: AppColors.shadowMedium,
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -483,7 +483,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         AppSpacing.hMd,
         recentDonations.when(
           loading: () => const CardSkeleton(height: 240),
-          error: (_, _) => const CardSkeleton(height: 240),
+          error: (_, __) => const CardSkeleton(height: 240),
           data: (donations) {
             final items = donations.take(4).toList();
             return PremiumCard(
@@ -537,7 +537,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           height: 134,
           child: donations.when(
             loading: () => const SizedBox(height: 134),
-            error: (_, _) => const SizedBox(height: 134),
+            error: (_, __) => const SizedBox(height: 134),
             data: (list) {
               final totals = <String, double>{};
               for (final donation in list) {
@@ -554,7 +554,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 scrollDirection: Axis.horizontal,
                 padding: EdgeInsets.zero,
                 itemCount: ranked.length,
-                separatorBuilder: (_, _) => AppSpacing.wMd,
+                separatorBuilder: (_, __) => AppSpacing.wMd,
                 itemBuilder: (context, index) {
                   final donor = ranked[index];
                   return SizedBox(
