@@ -16,6 +16,7 @@ import '../../core/widgets/timeline_item.dart';
 import '../../core/widgets/avatar_widget.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/loading_shimmer.dart';
+import '../../core/widgets/category_icon_badge.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -333,18 +334,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           // Top row
           Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppColors.inkOnPrimary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Icon(
-                  Icons.account_balance_rounded,
-                  color: AppColors.inkOnPrimary,
-                  size: 20,
-                ),
+              CategoryIconBadge(
+                icon: Icons.account_balance_rounded,
+                color: AppColors.inkOnPrimary,
+                size: 36,
               ),
               AppSpacing.wMd,
               Text(
