@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lottie/lottie.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../data_service.dart';
 
@@ -123,7 +124,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
+            colors: [AppColors.primary, AppColors.primaryDark],
           ),
         ),
         child: SafeArea(
