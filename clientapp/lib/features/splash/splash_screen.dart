@@ -150,7 +150,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   width: 300,
                   height: 300,
                   child: Lottie.asset(
-                    'assets/village_animation.json',
+                    'assets/charity_animation.json',
                     controller: _lottieCtrl,
                     fit: BoxFit.contain,
                     onLoaded: (composition) {
