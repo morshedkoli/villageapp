@@ -11,6 +11,7 @@ import '../../core/widgets/status_badge.dart';
 import '../../core/widgets/kpi_card.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/motion.dart';
+import '../../core/widgets/loading_shimmer.dart';
 
 const _bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
 
@@ -51,21 +52,41 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     final projectsAsync = ref.watch(projectsProvider);
 
     return Scaffold(
+      backgroundColor: context.canvas,
       body: SafeArea(
         child: projectsAsync.when(
-          loading: () => const Center(
-            child: CircularProgressIndicator(),
-          ),
-          error: (err, stack) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Text(
-                'ত্রুটি: $err',
-                style: context.textTheme.bodyMedium?.copyWith(
-                  color: context.textSecondary,
+          loading: () => Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.xxxl,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                AppSpacing.hLg,
+                Row(
+                  children: const [
+                    Expanded(child: CardSkeleton(height: 86)),
+                    SizedBox(width: AppSpacing.sm),
+                    Expanded(child: CardSkeleton(height: 86)),
+                    SizedBox(width: AppSpacing.sm),
+                    Expanded(child: CardSkeleton(height: 86)),
+                  ],
                 ),
-                textAlign: TextAlign.center,
-              ),
+                AppSpacing.hXxl,
+                const ShimmerLoading(height: 38, width: double.infinity),
+                AppSpacing.hLg,
+                const Expanded(child: ListSkeleton(itemCount: 3)),
+              ],
+            ),
+          ),
+          error: (err, _) => Center(
+            child: EmptyStateWidget(
+              icon: Icons.error_outline_rounded,
+              title: 'প্রকল্প তথ্য পাওয়া যায়নি',
+              subtitle: 'ইন্টারনেট সংযোগ চেক করুন এবং পুনরায় চেষ্টা করুন',
+              actionLabel: 'পুনরায় চেষ্টা করুন',
+              onAction: () => ref.invalidate(projectsProvider),
             ),
           ),
           data: (projects) => SingleChildScrollView(
@@ -91,41 +112,38 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   }
 
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'কমিউনিটি প্রকল্প',
-                style: context.textTheme.headlineMedium?.copyWith(
-                  color: context.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'কমিউনিটি প্রকল্প',
+              style: context.textTheme.headlineMedium?.copyWith(
+                color: context.textPrimary,
+                fontWeight: FontWeight.w700,
               ),
-              AppSpacing.hXs,
-              Text(
-                'আমাদের গ্রামের উন্নয়নমূলক কাজ',
-                style: context.textTheme.bodySmall?.copyWith(
-                  color: context.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: context.card,
-              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: Icon(Icons.construction_outlined, size: 22, color: context.primary),
+            AppSpacing.hXs,
+            Text(
+              'আমাদের গ্রামের উন্নয়নমূলক কাজ',
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: context.card,
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
-        ],
-      ),
+          child: Icon(Icons.construction_outlined, size: 22, color: context.primary),
+        ),
+      ],
     );
   }
 
@@ -135,88 +153,82 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     final completed = projects.where((p) => p.status == 'Completed').length;
     final completionRate = total > 0 ? (completed / total * 100).round() : 0;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      child: Row(
-        children: [
-          Expanded(
-            child: KpiCard(
-              label: 'মোট প্রকল্প',
-              value: _formatAmount(total.toDouble()),
-              icon: Icons.assignment_outlined,
-              iconBackground: AppColors.info.withValues(alpha: 0.1),
-            ),
+    return Row(
+      children: [
+        Expanded(
+          child: KpiCard(
+            label: 'মোট প্রকল্প',
+            value: _formatAmount(total.toDouble()),
+            icon: Icons.assignment_outlined,
+            iconBackground: AppColors.info.withValues(alpha: 0.1),
           ),
-          AppSpacing.wMd,
-          Expanded(
-            child: KpiCard(
-              label: 'চলমান',
-              value: _formatAmount(ongoing.toDouble()),
-              icon: Icons.sync_outlined,
-              iconBackground: AppColors.warning.withValues(alpha: 0.1),
-            ),
+        ),
+        AppSpacing.wMd,
+        Expanded(
+          child: KpiCard(
+            label: 'চলমান',
+            value: _formatAmount(ongoing.toDouble()),
+            icon: Icons.sync_outlined,
+            iconBackground: AppColors.warning.withValues(alpha: 0.1),
           ),
-          AppSpacing.wMd,
-          Expanded(
-            child: KpiCard(
-              label: 'সম্পন্ন',
-              value: _formatAmount(completed.toDouble()),
-              subtitle: '$completionRate%',
-              icon: Icons.check_circle_outlined,
-              iconBackground: AppColors.success.withValues(alpha: 0.1),
-            ),
+        ),
+        AppSpacing.wMd,
+        Expanded(
+          child: KpiCard(
+            label: 'সম্পন্ন',
+            value: _formatAmount(completed.toDouble()),
+            subtitle: '$completionRate%',
+            icon: Icons.check_circle_outlined,
+            iconBackground: AppColors.success.withValues(alpha: 0.1),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildFilterChips() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'ফিল্টার',
-            style: context.textTheme.titleSmall?.copyWith(
-              color: context.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'ফিল্টার',
+          style: context.textTheme.titleSmall?.copyWith(
+            color: context.textPrimary,
+            fontWeight: FontWeight.w600,
           ),
-          AppSpacing.hMd,
-          SizedBox(
-            height: 40,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _filters.length,
-              separatorBuilder: (_, _) => AppSpacing.wSm,
-              itemBuilder: (context, index) {
-                final filter = _filters[index];
-                final selected = _selectedFilter == filter;
-                return ChoiceChip(
-                  label: Text(filter),
-                  selected: selected,
-                  onSelected: (val) {
-                    if (val) setState(() => _selectedFilter = filter);
-                  },
-                  labelStyle: context.textTheme.labelMedium?.copyWith(
-                    color: selected ? AppColors.primary : context.textSecondary,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                  selectedColor: AppColors.primary.withValues(alpha: 0.12),
-                  backgroundColor: context.isDark ? AppColors.darkCard : AppColors.lightBackground,
-                  side: BorderSide.none,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
-                );
-              },
-            ),
+        ),
+        AppSpacing.hMd,
+        SizedBox(
+          height: 40,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _filters.length,
+            separatorBuilder: (_, _) => AppSpacing.wSm,
+            itemBuilder: (context, index) {
+              final filter = _filters[index];
+              final selected = _selectedFilter == filter;
+              return ChoiceChip(
+                label: Text(filter),
+                selected: selected,
+                onSelected: (val) {
+                  if (val) setState(() => _selectedFilter = filter);
+                },
+                labelStyle: context.textTheme.labelMedium?.copyWith(
+                  color: selected ? AppColors.primary : context.textSecondary,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+                selectedColor: AppColors.primary.withValues(alpha: 0.12),
+                backgroundColor: context.isDark ? AppColors.darkCard : AppColors.lightBackground,
+                side: BorderSide.none,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

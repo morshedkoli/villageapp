@@ -12,6 +12,7 @@ import '../../core/widgets/avatar_widget.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/login_prompt.dart';
+import '../../core/widgets/loading_shimmer.dart';
 import '../../core/providers/providers.dart';
 import '../../models.dart';
 
@@ -112,12 +113,28 @@ class _ProblemsScreenState extends ConsumerState<ProblemsScreen> {
   Widget _buildStatsGrid() {
     final problemsAsync = ref.watch(problemsProvider);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      child: problemsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => const Center(child: Text('তথ্য লোড করতে ত্রুটি')),
-        data: (problems) {
+    return problemsAsync.when(
+      loading: () => Column(
+        children: [
+          Row(
+            children: const [
+              Expanded(child: CardSkeleton(height: 90)),
+              SizedBox(width: AppSpacing.md),
+              Expanded(child: CardSkeleton(height: 90)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: const [
+              Expanded(child: CardSkeleton(height: 90)),
+              SizedBox(width: AppSpacing.md),
+              Expanded(child: CardSkeleton(height: 90)),
+            ],
+          ),
+        ],
+      ),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (problems) {
           final total = problems.length;
           final pending = problems.where((p) => p.status.toLowerCase() == 'pending' || p.status.toLowerCase() == 'under_review').length;
           final inProgress = problems.where((p) => p.status.toLowerCase() == 'in_progress').length;
@@ -230,7 +247,7 @@ class _ProblemsScreenState extends ConsumerState<ProblemsScreen> {
     final problemsAsync = ref.watch(problemsProvider);
 
     return problemsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const ListSkeleton(itemCount: 4),
       error: (error, _) => EmptyState(
         icon: Icons.error_outline,
         title: 'ত্রুটি',

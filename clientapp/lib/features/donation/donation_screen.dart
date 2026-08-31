@@ -12,6 +12,8 @@ import '../../core/widgets/section_header.dart';
 import '../../core/widgets/timeline_item.dart';
 import '../../core/widgets/avatar_widget.dart';
 import '../../core/widgets/motion.dart';
+import '../../core/widgets/loading_shimmer.dart';
+import '../../core/widgets/empty_state.dart';
 import '../../core/providers/providers.dart';
 import '../../models.dart';
 
@@ -32,22 +34,58 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
     final topDonorsAsync = ref.watch(topDonorsProvider);
 
     if (dashboardAsync.isLoading || donationsAsync.isLoading || topDonorsAsync.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: context.canvas,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _DonationHeader(),
+                AppSpacing.hLg,
+                const HeroCardSkeleton(),
+                AppSpacing.hXxl,
+                const ShimmerLoading(height: 36, width: double.infinity),
+                AppSpacing.hXxl,
+                const Expanded(child: ListSkeleton(itemCount: 4)),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
-    if (dashboardAsync.hasError) {
-      return Scaffold(body: Center(child: Text('ত্রুটি: ${dashboardAsync.error}')));
-    }
-    if (donationsAsync.hasError) {
-      return Scaffold(body: Center(child: Text('ত্রুটি: ${donationsAsync.error}')));
-    }
-    if (topDonorsAsync.hasError) {
-      return Scaffold(body: Center(child: Text('ত্রুটি: ${topDonorsAsync.error}')));
+    if (dashboardAsync.hasError || donationsAsync.hasError) {
+      return Scaffold(
+        backgroundColor: context.canvas,
+        body: SafeArea(
+          child: Center(
+            child: EmptyStateWidget(
+              icon: Icons.error_outline_rounded,
+              title: 'তথ্য লোড করা যায়নি',
+              subtitle: 'ইন্টারনেট সংযোগ পরীক্ষা করে পুনরায় চেষ্টা করুন',
+              actionLabel: 'পুনরায় লোড করুন',
+              onAction: () {
+                ref.invalidate(dashboardProvider);
+                ref.invalidate(recentDonationsProvider);
+                ref.invalidate(topDonorsProvider);
+              },
+            ),
+          ),
+        ),
+      );
     }
 
-    final overview = dashboardAsync.requireValue;
-    final donations = donationsAsync.requireValue;
-    final topDonors = topDonorsAsync.requireValue;
+    final overview = dashboardAsync.valueOrNull ??
+        const VillageOverview(
+          name: 'আল ইসলাহ',
+          totalCitizens: 0,
+          totalFundCollected: 0,
+          totalSpent: 0,
+        );
+    final donations = donationsAsync.valueOrNull ?? [];
+    final topDonors = topDonorsAsync.valueOrNull ?? [];
 
     return Scaffold(
       body: SafeArea(

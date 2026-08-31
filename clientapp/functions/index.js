@@ -274,6 +274,23 @@ exports.onCitizenRegisteredNotifyAll = functions.firestore
   .onCreate(async (snap, context) => {
     const user = snap.data() || {};
     const name = (user.name || user.displayName || 'নতুন নাগরিক').toString();
+    const isCitizen = user.isCitizen !== false;
+
+    // Auto-increment totalCitizens count on main village doc if citizen
+    if (isCitizen) {
+      try {
+        await admin
+          .firestore()
+          .collection('villages')
+          .doc('main_village')
+          .set(
+            { totalCitizens: admin.firestore.FieldValue.increment(1) },
+            { merge: true }
+          );
+      } catch (err) {
+        console.error('[counter] failed to increment totalCitizens:', err.message);
+      }
+    }
 
     await broadcastNotification({
       title: '👤 নতুন নাগরিক যোগ হয়েছে',
@@ -281,6 +298,56 @@ exports.onCitizenRegisteredNotifyAll = functions.firestore
       type:  'registration',
       data:  { userId: context.params.userId },
     });
+  });
+
+/** User deleted - adjust totalCitizens count */
+exports.onCitizenDeletedAdjustCount = functions.firestore
+  .document('users/{userId}')
+  .onDelete(async (snap) => {
+    const user = snap.data() || {};
+    const isCitizen = user.isCitizen !== false;
+
+    if (isCitizen) {
+      try {
+        await admin
+          .firestore()
+          .collection('villages')
+          .doc('main_village')
+          .set(
+            { totalCitizens: admin.firestore.FieldValue.increment(-1) },
+            { merge: true }
+          );
+      } catch (err) {
+        console.error('[counter] failed to decrement totalCitizens:', err.message);
+      }
+    }
+  });
+
+/** Citizen status updated (isCitizen toggle) */
+exports.onCitizenStatusUpdatedAdjustCount = functions.firestore
+  .document('users/{userId}')
+  .onUpdate(async (change) => {
+    const before = change.before.data() || {};
+    const after = change.after.data() || {};
+
+    const wasCitizen = before.isCitizen === true;
+    const isNowCitizen = after.isCitizen === true;
+
+    if (wasCitizen === isNowCitizen) return;
+
+    const delta = isNowCitizen ? 1 : -1;
+    try {
+      await admin
+        .firestore()
+        .collection('villages')
+        .doc('main_village')
+        .set(
+          { totalCitizens: admin.firestore.FieldValue.increment(delta) },
+          { merge: true }
+        );
+    } catch (err) {
+      console.error('[counter] failed to adjust totalCitizens on update:', err.message);
+    }
   });
 
 // ─────────────────────────────────────────────────────────────────────────────

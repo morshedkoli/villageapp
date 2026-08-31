@@ -635,21 +635,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
+  static const _bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+
+  static String _toBengaliDigits(String s) {
+    return s.split('').map((c) {
+      final code = c.codeUnitAt(0);
+      if (code >= 48 && code <= 57) {
+        return _bengaliDigits[code - 48];
+      }
+      return c;
+    }).join();
+  }
+
   String _formatAmount(double amount) {
     final lakh = (amount / 100000).floor();
     final thousand = ((amount % 100000) / 1000).floor();
     if (lakh > 0) {
-      if (thousand > 0) return '$lakhলাখ $thousandহাজার';
-      return '$lakhলাখ';
+      if (thousand > 0) return '${_toBengaliDigits('$lakh')} লাখ ${_toBengaliDigits('$thousand')} হাজার';
+      return '${_toBengaliDigits('$lakh')} লাখ';
     }
-    return amount.toInt().toString();
+    return _toBengaliDigits(amount.toInt().toString());
   }
 
   String _formatCount(int count) {
-    if (count >= 10000000) return '${(count / 10000000).toStringAsFixed(1)}Cr';
-    if (count >= 100000) return '${(count / 100000).toStringAsFixed(1)}L';
-    if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}k';
-    return count.toString();
+    return _toBengaliDigits(count.toString());
   }
 }
 

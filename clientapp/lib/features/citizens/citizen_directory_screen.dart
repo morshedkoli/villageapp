@@ -12,6 +12,7 @@ import '../../core/widgets/avatar_widget.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/login_prompt.dart';
+import '../../core/widgets/loading_shimmer.dart';
 
 class CitizenDirectoryScreen extends ConsumerStatefulWidget {
   const CitizenDirectoryScreen({super.key});
@@ -62,12 +63,24 @@ class _CitizenDirectoryScreenState extends ConsumerState<CitizenDirectoryScreen>
         .when(data: (v) => v, error: (_, _) => false, loading: () => false);
 
     return Scaffold(
+      backgroundColor: context.canvas,
       appBar: AppBar(
         title: const Text('নাগরিক তালিকা'),
       ),
       body: citizensAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('ত্রুটি: $e')),
+        loading: () => const Padding(
+          padding: EdgeInsets.all(AppSpacing.lg),
+          child: ListSkeleton(itemCount: 6),
+        ),
+        error: (e, _) => Center(
+          child: EmptyStateWidget(
+            icon: Icons.error_outline_rounded,
+            title: 'নাগরিক তথ্য লোড করা যায়নি',
+            subtitle: 'ইন্টারনেট সংযোগ চেক করে পুনরায় চেষ্টা করুন',
+            actionLabel: 'পুনরায় লোড করুন',
+            onAction: () => ref.invalidate(citizensProvider),
+          ),
+        ),
         data: (citizens) {
           final filtered = _filtered(citizens);
           return Column(
@@ -85,6 +98,15 @@ class _CitizenDirectoryScreenState extends ConsumerState<CitizenDirectoryScreen>
                   decoration: InputDecoration(
                     hintText: 'নাগরিক অনুসন্ধান করুন...',
                     prefixIcon: Icon(Icons.search, color: context.textSecondary),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                          )
+                        : null,
                     filled: true,
                     fillColor: context.card,
                     border: OutlineInputBorder(
