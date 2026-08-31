@@ -226,14 +226,14 @@ class _HeroBackground extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: isDark
                 ? [
-                    const Color(0xFF0F2518),
-                    const Color(0xFF16A34A),
-                    const Color(0xFF15803D),
+                    AppColors.darkCanvas,
+                    AppColors.primaryDark,
+                    AppColors.primary,
                   ]
                 : [
-                    const Color(0xFF166534),
-                    const Color(0xFF16A34A),
-                    const Color(0xFF22C55E),
+                    AppColors.primaryDark,
+                    AppColors.primary,
+                    AppColors.primaryLight,
                   ],
             stops: const [0.0, 0.55, 1.0],
           ),
@@ -362,7 +362,7 @@ class _HeroContent extends StatelessWidget {
                         child: Image.asset(
                           'assets/logo.png',
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const Icon(
+                          errorBuilder: (_, __, ___) => const Icon(
                             Icons.holiday_village_rounded,
                             size: 36,
                             color: AppColors.primary,
@@ -969,7 +969,7 @@ class _GoogleForm extends StatelessWidget {
                   Image.network(
                     'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png',
                     height: 22,
-                    errorBuilder: (_, _, _) =>
+                    errorBuilder: (_, __, ___) =>
                         const Icon(Icons.g_mobiledata, size: 28, color: AppColors.primary),
                   ),
                 AppSpacing.wMd,
@@ -1018,7 +1018,7 @@ class _GoogleQuickButton extends StatelessWidget {
             Image.network(
               'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png',
               height: 18,
-              errorBuilder: (_, _, _) =>
+              errorBuilder: (_, __, ___) =>
                   const Icon(Icons.g_mobiledata, size: 22, color: AppColors.primary),
             ),
             AppSpacing.wSm,
