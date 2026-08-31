@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/category_icon_badge.dart';
 import '../../push_notification_service.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -26,21 +28,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       icon: Icons.account_balance_wallet_rounded,
       titleBn: 'স্বচ্ছ গ্রাম তহবিল',
       descBn: 'প্রতিটি অনুদান ও খরচ রিয়েল-টাইমে ট্র্যাক করুন। গ্রামের তহবিল কিভাবে ব্যবহার হচ্ছে তা দেখুন।',
+      color: AppColors.primary,
     ),
     _OnboardingPage(
       icon: Icons.construction_rounded,
       titleBn: 'উন্নয়ন প্রকল্প',
       descBn: 'গ্রাম উন্নয়ন প্রকল্প, তাদের অগ্রগতি এবং খরচের রিপোর্ট পর্যবেক্ষণ করুন।',
+      color: AppColors.accentGold,
     ),
     _OnboardingPage(
       icon: Icons.report_problem_rounded,
       titleBn: 'সমস্যা রিপোর্ট',
       descBn: 'ছবি ও অবস্থান সহ গ্রামের সমস্যা রিপোর্ট করুন। সমাধানের অগ্রগতি ট্র্যাক করুন।',
+      color: AppColors.accentTerracotta,
     ),
     _OnboardingPage(
       icon: Icons.people_rounded,
       titleBn: 'জনগণের অংশগ্রহণ',
       descBn: 'আপনার গ্রামের কমিউনিটিতে যোগ দিন। অনুদান দিন, অংশগ্রহণ করুন এবং একসাথে পরিবর্তন আনুন।',
+      color: AppColors.info,
     ),
   ];
 
@@ -77,7 +83,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0,
+              ),
               child: Row(
                 children: [
                   Expanded(
@@ -146,7 +154,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.xl,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -311,18 +321,10 @@ class _FeaturePageView extends StatelessWidget {
       child: Column(
         children: [
           const Spacer(flex: 2),
-          Container(
-            width: 132,
-            height: 132,
-            decoration: BoxDecoration(
-              color: context.primaryContainer,
-              borderRadius: BorderRadius.circular(AppRadius.xl),
-              border: Border.all(
-                color: context.primary.withValues(alpha: 0.12),
-                width: 1,
-              ),
-            ),
-            child: Icon(page.icon, color: context.primary, size: 56),
+          CategoryIconBadge(
+            icon: page.icon,
+            color: page.color,
+            size: 132,
           ),
           const SizedBox(height: 40),
           Text(
@@ -548,9 +550,11 @@ class _OnboardingPage {
     required this.icon,
     required this.titleBn,
     required this.descBn,
+    required this.color,
   });
 
   final IconData icon;
   final String titleBn;
   final String descBn;
+  final Color color;
 }
