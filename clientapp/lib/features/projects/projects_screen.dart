@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/providers/providers.dart';
 import '../../models.dart';
 import '../../core/theme/app_colors.dart';
@@ -265,7 +266,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
             delay: 0,
             child: PressScale(
               scale: 0.98,
-              onTap: () {},
+              onTap: () => context.push('/projects/${project.id}'),
               child: GlassCard(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(

@@ -9,7 +9,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/motion.dart';
-import '../../data_service.dart';
+import '../../services/problem_service.dart';
 
 class ReportProblemScreen extends ConsumerStatefulWidget {
   const ReportProblemScreen({super.key});
@@ -116,38 +116,42 @@ class _ReportProblemScreenState extends ConsumerState<ReportProblemScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: Text(
-            'সমস্যার শিরোনাম',
-            style: context.textTheme.titleSmall?.copyWith(
-              color: context.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
+        Text(
+          'সমস্যার শিরোনাম',
+          style: context.textTheme.titleSmall?.copyWith(
+            color: context.textPrimary,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        AppSpacing.hMd,
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: TextFormField(
-            controller: _titleController,
-            style: context.textTheme.bodyMedium?.copyWith(color: context.textPrimary),
-            decoration: InputDecoration(
-              hintText: 'যেমন: রাস্তা ভেঙে গেছে',
-              hintStyle: context.textTheme.bodyMedium?.copyWith(color: context.textTertiary),
-              filled: true,
-              fillColor: context.isDark ? AppColors.darkCard : AppColors.lightBackground,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.lg,
+        AppSpacing.hSm,
+        TextFormField(
+          controller: _titleController,
+          style: context.textTheme.bodyMedium?.copyWith(color: context.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'যেমন: রাস্তার বাতি নষ্ট বা ড্রেন পরিষ্কার প্রয়োজন',
+            hintStyle: context.textTheme.bodyMedium?.copyWith(color: context.textTertiary),
+            filled: true,
+            fillColor: context.card,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              borderSide: BorderSide(
+                color: context.isDark ? AppColors.darkBorder : AppColors.lightBorder,
               ),
             ),
-            validator: (v) => v == null || v.isEmpty ? 'শিরোনাম দিন' : null,
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.lg,
+            ),
           ),
+          validator: (v) => v == null || v.trim().isEmpty ? 'শিরোনাম দিন' : null,
         ),
       ],
     );
@@ -157,44 +161,38 @@ class _ReportProblemScreenState extends ConsumerState<ReportProblemScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: Text(
-            'বিভাগ',
-            style: context.textTheme.titleSmall?.copyWith(
-              color: context.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
+        Text(
+          'সমস্যার বিভাগ',
+          style: context.textTheme.titleSmall?.copyWith(
+            color: context.textPrimary,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        AppSpacing.hMd,
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: _categories.map((cat) {
-              final selected = _selectedCategory == cat;
-              return ChoiceChip(
-                label: Text(cat),
-                selected: selected,
-                onSelected: (val) {
-                  if (val) setState(() => _selectedCategory = cat);
-                },
-                labelStyle: context.textTheme.labelMedium?.copyWith(
-                  color: selected ? AppColors.primary : context.textSecondary,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                ),
-                selectedColor: AppColors.primary.withValues(alpha: 0.12),
-                backgroundColor: context.isDark ? AppColors.darkCard : AppColors.lightBackground,
-                side: BorderSide.none,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
-              );
-            }).toList(),
-          ),
+        AppSpacing.hSm,
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: _categories.map((cat) {
+            final selected = _selectedCategory == cat;
+            return ChoiceChip(
+              label: Text(cat),
+              selected: selected,
+              onSelected: (val) {
+                if (val) setState(() => _selectedCategory = cat);
+              },
+              labelStyle: context.textTheme.labelMedium?.copyWith(
+                color: selected ? AppColors.primary : context.textSecondary,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+              selectedColor: AppColors.primary.withValues(alpha: 0.12),
+              backgroundColor: context.card,
+              side: BorderSide.none,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+            );
+          }).toList(),
         ),
       ],
     );
@@ -204,41 +202,45 @@ class _ReportProblemScreenState extends ConsumerState<ReportProblemScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: Text(
-            'বর্ণনা',
-            style: context.textTheme.titleSmall?.copyWith(
-              color: context.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
+        Text(
+          'বিস্তারিত বিবরণ',
+          style: context.textTheme.titleSmall?.copyWith(
+            color: context.textPrimary,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        AppSpacing.hMd,
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: TextFormField(
-            controller: _descriptionController,
-            maxLines: 5,
-            minLines: 4,
-            style: context.textTheme.bodyMedium?.copyWith(color: context.textPrimary),
-            decoration: InputDecoration(
-              hintText: 'সমস্যার বিস্তারিত বর্ণনা দিন...',
-              hintStyle: context.textTheme.bodyMedium?.copyWith(color: context.textTertiary),
-              filled: true,
-              fillColor: context.isDark ? AppColors.darkCard : AppColors.lightBackground,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.lg,
-              ),
-              alignLabelWithHint: true,
+        AppSpacing.hSm,
+        TextFormField(
+          controller: _descriptionController,
+          maxLines: 5,
+          minLines: 3,
+          style: context.textTheme.bodyMedium?.copyWith(color: context.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'সমস্যার বিস্তারিত বিবরণ দিন...',
+            hintStyle: context.textTheme.bodyMedium?.copyWith(color: context.textTertiary),
+            filled: true,
+            fillColor: context.card,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              borderSide: BorderSide.none,
             ),
-            validator: (v) => v == null || v.isEmpty ? 'বর্ণনা দিন' : null,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              borderSide: BorderSide(
+                color: context.isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.lg,
+            ),
+            alignLabelWithHint: true,
           ),
+          validator: (v) => v == null || v.trim().isEmpty ? 'বিবরণ দিন' : null,
         ),
       ],
     );
@@ -248,83 +250,77 @@ class _ReportProblemScreenState extends ConsumerState<ReportProblemScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: Text(
-            'ছবি',
-            style: context.textTheme.titleSmall?.copyWith(
-              color: context.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
+        Text(
+          'ছবি (ঐচ্ছিক)',
+          style: context.textTheme.titleSmall?.copyWith(
+            color: context.textPrimary,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        AppSpacing.hMd,
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: GestureDetector(
-            onTap: _pickImage,
-            child: Container(
-              height: 120,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: context.isDark ? AppColors.darkCard : AppColors.lightBackground,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(
-                  color: context.isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                  width: 1.5,
-                  strokeAlign: BorderSide.strokeAlignInside,
-                ),
+        AppSpacing.hSm,
+        GestureDetector(
+          onTap: _pickImage,
+          child: Container(
+            height: 130,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: context.card,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(
+                color: context.isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                width: 1.5,
               ),
-              child: _selectedImage == null
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.camera_alt_outlined,
-                          size: 36,
+            ),
+            child: _selectedImage == null
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.add_a_photo_outlined,
+                        size: 34,
+                        color: AppColors.primary,
+                      ),
+                      AppSpacing.hSm,
+                      Text(
+                        'সমস্যার ছবি আপলোড করুন',
+                        style: context.textTheme.bodyMedium?.copyWith(
+                          color: context.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      AppSpacing.hXs,
+                      Text(
+                        'গ্যালারি থেকে ছবি নির্বাচন করতে ট্যাপ করুন',
+                        style: context.textTheme.labelSmall?.copyWith(
                           color: context.textTertiary,
                         ),
-                        AppSpacing.hSm,
-                        Text(
-                          'ছবি যুক্ত করুন',
-                          style: context.textTheme.bodyMedium?.copyWith(
-                            color: context.textTertiary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        AppSpacing.hXs,
-                        Text(
-                          'সমস্যার ছবি আপলোড করুন',
-                          style: context.textTheme.labelSmall?.copyWith(
-                            color: context.textTertiary,
+                      ),
+                    ],
+                  )
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.file(_selectedImage!, fit: BoxFit.cover),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              onPressed: () => setState(() => _selectedImage = null),
+                              icon: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                              tooltip: 'ছবি মুছুন',
+                            ),
                           ),
                         ),
                       ],
-                    )
-                  : ClipRRect(
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.file(_selectedImage!, fit: BoxFit.cover),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.55),
-                                borderRadius: BorderRadius.circular(AppRadius.full),
-                              ),
-                              child: IconButton(
-                                onPressed: () => setState(() => _selectedImage = null),
-                                icon: const Icon(Icons.close_rounded, color: Colors.white),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
-            ),
+                  ),
           ),
         ),
       ],
@@ -335,36 +331,40 @@ class _ReportProblemScreenState extends ConsumerState<ReportProblemScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: Text(
-            'অবস্থান',
-            style: context.textTheme.titleSmall?.copyWith(
-              color: context.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
+        Text(
+          'অবস্থান / এলাকা',
+          style: context.textTheme.titleSmall?.copyWith(
+            color: context.textPrimary,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        AppSpacing.hMd,
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: TextFormField(
-            controller: _locationController,
-            style: context.textTheme.bodyMedium?.copyWith(color: context.textPrimary),
-            decoration: InputDecoration(
-              hintText: 'ঠিকানা বা অবস্থান দিন',
-              hintStyle: context.textTheme.bodyMedium?.copyWith(color: context.textTertiary),
-              prefixIcon: Icon(Icons.location_on_outlined, size: 20, color: context.textTertiary),
-              filled: true,
-              fillColor: context.isDark ? AppColors.darkCard : AppColors.lightBackground,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                borderSide: BorderSide.none,
+        AppSpacing.hSm,
+        TextFormField(
+          controller: _locationController,
+          style: context.textTheme.bodyMedium?.copyWith(color: context.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'যেমন: মধ্যপাড়া জামে মসজিদের সামনে',
+            hintStyle: context.textTheme.bodyMedium?.copyWith(color: context.textTertiary),
+            prefixIcon: Icon(Icons.location_on_outlined, size: 20, color: context.textSecondary),
+            filled: true,
+            fillColor: context.card,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              borderSide: BorderSide(
+                color: context.isDark ? AppColors.darkBorder : AppColors.lightBorder,
               ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.lg,
-              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.lg,
             ),
           ),
         ),
@@ -373,29 +373,26 @@ class _ReportProblemScreenState extends ConsumerState<ReportProblemScreen> {
   }
 
   Widget _buildSubmitButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      child: SizedBox(
-        width: double.infinity,
-        child: FilledButton(
-          onPressed: _submitting ? null : _handleSubmit,
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-          ),
-          child: _submitting
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Colors.white,
-                  ),
-                )
-              : const Text(
-                  'রিপোর্ট জমা দিন',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                ),
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton(
+        onPressed: _submitting ? null : _handleSubmit,
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
         ),
+        child: _submitting
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : const Text(
+                'রিপোর্ট জমা দিন',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+              ),
       ),
     );
   }
@@ -420,7 +417,7 @@ class _ReportProblemScreenState extends ConsumerState<ReportProblemScreen> {
 
     setState(() => _submitting = true);
     try {
-      await DataService.instance.reportProblem(
+      await ProblemService.instance.reportProblem(
         title: '[${_selectedCategory.trim()}] ${_titleController.text.trim()}',
         description: _descriptionController.text.trim(),
         location: _locationController.text.trim(),

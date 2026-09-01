@@ -109,9 +109,9 @@ class _PremiumNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Wrapped in DecoratedBox for top-border divider
-    return DecoratedBox(
+    return Container(
       decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
         border: Border(
           top: BorderSide(
             color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
@@ -119,17 +119,24 @@ class _PremiumNavBar extends StatelessWidget {
           ),
         ),
       ),
-      child: NavigationBar(
-        selectedIndex: currentIndex,
-        onDestinationSelected: onTap,
-        destinations: List.generate(tabs.length, (i) {
-          final tab = tabs[i];
-          return NavigationDestination(
-            icon: Icon(tab.icon),
-            selectedIcon: Icon(tab.activeIcon),
-            label: tab.label,
-          );
-        }),
+      child: SafeArea(
+        top: false,
+        child: NavigationBar(
+          height: 64,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          selectedIndex: currentIndex,
+          onDestinationSelected: onTap,
+          destinations: List.generate(tabs.length, (i) {
+            final tab = tabs[i];
+            return NavigationDestination(
+              icon: Icon(tab.icon),
+              selectedIcon: Icon(tab.activeIcon),
+              label: tab.label,
+              tooltip: tab.label,
+            );
+          }),
+        ),
       ),
     );
   }

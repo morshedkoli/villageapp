@@ -17,6 +17,35 @@ double _readDouble(dynamic value) {
   return 0;
 }
 
+/// Counters written with `FieldValue.increment` can come back as either an int
+/// or a double depending on how they were seeded, so they are read as `num`
+/// rather than cast to `int`.
+int _readInt(dynamic value) {
+  if (value is num) {
+    return value.toInt();
+  }
+  return 0;
+}
+
+String _readString(dynamic value, [String fallback = '']) {
+  if (value is String && value.isNotEmpty) return value;
+  return fallback;
+}
+
+/// `cast<String>()` defers its type check to iteration, so a single non-string
+/// entry throws deep inside a widget build. Filtering up front keeps a
+/// malformed document from taking down the screen.
+List<String> _readStringList(dynamic value) {
+  if (value is! List) return const <String>[];
+  return value.whereType<String>().toList(growable: false);
+}
+
+DateTime? _readOptionalDate(dynamic value) {
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  return null;
+}
+
 class VillageOverview {
   const VillageOverview({
     required this.name,
@@ -34,8 +63,8 @@ class VillageOverview {
 
   factory VillageOverview.fromMap(Map<String, dynamic> map) {
     return VillageOverview(
-      name: (map['name'] as String?) ?? 'Our Village',
-      totalCitizens: (map['totalCitizens'] as int?) ?? 0,
+      name: _readString(map['name'], 'Our Village'),
+      totalCitizens: _readInt(map['totalCitizens']),
       totalFundCollected: _readDouble(map['totalFundCollected']),
       totalSpent: _readDouble(map['totalSpent']),
     );
@@ -53,6 +82,8 @@ class Donation {
     required this.status,
     required this.transactionId,
     required this.senderNumber,
+    this.receivedAccountId = '',
+    this.receivedAccountLabel = '',
   });
 
   final String id;
@@ -65,18 +96,37 @@ class Donation {
   final String transactionId;
   final String senderNumber;
 
-  factory Donation.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final map = doc.data() ?? <String, dynamic>{};
+  /// Id of the village payment account the money was sent to, as recorded by
+  /// the admin panel. Empty for cash and for donations logged before the
+  /// account was chosen explicitly.
+  final String receivedAccountId;
+
+  /// Human-readable form of [receivedAccountId] (`"bkash • 0170… • Fund"`),
+  /// denormalized by the admin panel so it survives an account being deleted.
+  final String receivedAccountLabel;
+
+  bool get isPending => status == 'Pending';
+  bool get isApproved => status == 'Approved';
+  bool get isRejected => status == 'Rejected';
+
+  factory Donation.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) =>
+      Donation.fromMap(doc.id, doc.data() ?? const <String, dynamic>{});
+
+  /// Parses a Firestore document body. Separate from [Donation.fromDoc]
+  /// so parsing can be tested without constructing a snapshot.
+  factory Donation.fromMap(String id, Map<String, dynamic> map) {
     return Donation(
-      id: doc.id,
-      donorName: (map['donorName'] as String?) ?? 'Anonymous',
+      id: id,
+      donorName: _readString(map['donorName'], 'Anonymous'),
       amount: _readDouble(map['amount']),
-      paymentMethod: (map['paymentMethod'] as String?) ?? 'Manual Transfer',
+      paymentMethod: _readString(map['paymentMethod'], 'Manual Transfer'),
       createdAt: _readDate(map['createdAt']),
-      userId: (map['userId'] as String?) ?? '',
-      status: (map['status'] as String?) ?? 'Approved',
-      transactionId: (map['transactionId'] as String?) ?? '',
-      senderNumber: (map['senderNumber'] as String?) ?? '',
+      userId: _readString(map['userId']),
+      status: _readString(map['status'], 'Approved'),
+      transactionId: _readString(map['transactionId']),
+      senderNumber: _readString(map['senderNumber']),
+      receivedAccountId: _readString(map['receivedAccountId']),
+      receivedAccountLabel: _readString(map['receivedAccountLabel']),
     );
   }
 }
@@ -102,26 +152,38 @@ class ProblemReport {
   final String photoUrl;
   final String location;
   final DateTime createdAt;
+
+  /// Display name of the reporter. Firestore holds the account identity in
+  /// `reportedBy` and the display name in `reportedByName`; only the name is
+  /// ever shown, so that is what this field carries.
   final String reportedBy;
   final int upvotes;
   final int downvotes;
 
+  bool get isPending => status == 'Pending';
+  bool get isApproved => status == 'Approved';
+  bool get isCompleted => status == 'Completed';
+
   /// Net vote score (upvotes - downvotes)
   int get voteScore => upvotes - downvotes;
 
-  factory ProblemReport.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final map = doc.data() ?? <String, dynamic>{};
+  factory ProblemReport.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) =>
+      ProblemReport.fromMap(doc.id, doc.data() ?? const <String, dynamic>{});
+
+  /// Parses a Firestore document body. Separate from [ProblemReport.fromDoc]
+  /// so parsing can be tested without constructing a snapshot.
+  factory ProblemReport.fromMap(String id, Map<String, dynamic> map) {
     return ProblemReport(
-      id: doc.id,
-      title: (map['title'] as String?) ?? '',
-      description: (map['description'] as String?) ?? '',
-      status: (map['status'] as String?) ?? 'Pending',
-      photoUrl: (map['photoUrl'] as String?) ?? '',
-      location: (map['location'] as String?) ?? '',
+      id: id,
+      title: _readString(map['title']),
+      description: _readString(map['description']),
+      status: _readString(map['status'], 'Pending'),
+      photoUrl: _readString(map['photoUrl']),
+      location: _readString(map['location']),
       createdAt: _readDate(map['createdAt']),
-      reportedBy: (map['reportedByName'] as String?) ?? 'Citizen',
-      upvotes: (map['upvotes'] as int?) ?? 0,
-      downvotes: (map['downvotes'] as int?) ?? 0,
+      reportedBy: _readString(map['reportedByName'], 'Citizen'),
+      upvotes: _readInt(map['upvotes']),
+      downvotes: _readInt(map['downvotes']),
     );
   }
 }
@@ -137,6 +199,7 @@ class DevelopmentProject {
     required this.photos,
     required this.updates,
     required this.spendingReport,
+    this.createdAt,
   });
 
   final String id;
@@ -149,21 +212,38 @@ class DevelopmentProject {
   final List<String> updates;
   final List<String> spendingReport;
 
-  factory DevelopmentProject.fromDoc(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
-    final map = doc.data() ?? <String, dynamic>{};
+  /// Absent on projects created before the admin panel started stamping it.
+  final DateTime? createdAt;
+
+  /// Share of the estimated cost that has been funded, as a 0..1 fraction.
+  double get fundingProgress {
+    if (estimatedCost <= 0) return 0;
+    return (allocatedFunds / estimatedCost).clamp(0.0, 1.0);
+  }
+
+  /// Amount still needed to fully fund the project.
+  double get remainingCost {
+    final remaining = estimatedCost - allocatedFunds;
+    return remaining < 0 ? 0 : remaining;
+  }
+
+  factory DevelopmentProject.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) =>
+      DevelopmentProject.fromMap(doc.id, doc.data() ?? const <String, dynamic>{});
+
+  /// Parses a Firestore document body. Separate from [DevelopmentProject.fromDoc]
+  /// so parsing can be tested without constructing a snapshot.
+  factory DevelopmentProject.fromMap(String id, Map<String, dynamic> map) {
     return DevelopmentProject(
-      id: doc.id,
-      title: (map['title'] as String?) ?? '',
-      description: (map['description'] as String?) ?? '',
+      id: id,
+      title: _readString(map['title']),
+      description: _readString(map['description']),
       estimatedCost: _readDouble(map['estimatedCost']),
       allocatedFunds: _readDouble(map['allocatedFunds']),
-      status: (map['status'] as String?) ?? 'Planning',
-      photos: (map['photos'] as List<dynamic>? ?? const []).cast<String>(),
-      updates: (map['updates'] as List<dynamic>? ?? const []).cast<String>(),
-      spendingReport: (map['spendingReport'] as List<dynamic>? ?? const [])
-          .cast<String>(),
+      status: _readString(map['status'], 'Planning'),
+      photos: _readStringList(map['photos']),
+      updates: _readStringList(map['updates']),
+      spendingReport: _readStringList(map['spendingReport']),
+      createdAt: _readOptionalDate(map['createdAt']),
     );
   }
 }
@@ -179,6 +259,8 @@ class FundTransaction {
     required this.reference,
     required this.note,
     required this.createdAt,
+    this.category = '',
+    this.donationId = '',
   });
 
   final String id;
@@ -188,58 +270,37 @@ class FundTransaction {
   final String note;      // free-text description
   final DateTime createdAt;
 
+  /// Expense category chosen by the admin (e.g. "Construction", "Other").
+  final String category;
+
+  /// For `type == 'donation'`, the donation this ledger row was created from.
+  /// The admin panel uses it to reverse the row if the donation is later
+  /// rejected or deleted. Empty on rows written before that link existed.
+  final String donationId;
+
   bool get isExpense => type != 'donation';
 
-  factory FundTransaction.fromDoc(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
-    final map = doc.data() ?? <String, dynamic>{};
+  factory FundTransaction.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) =>
+      FundTransaction.fromMap(doc.id, doc.data() ?? const <String, dynamic>{});
+
+  /// Parses a Firestore document body. Separate from [FundTransaction.fromDoc]
+  /// so parsing can be tested without constructing a snapshot.
+  factory FundTransaction.fromMap(String id, Map<String, dynamic> map) {
     return FundTransaction(
-      id: doc.id,
-      type: (map['type'] as String?) ?? 'expense',
+      id: id,
+      type: _readString(map['type'], 'expense'),
       amount: _readDouble(map['amount']),
-      reference: (map['reference'] as String?) ?? '',
-      note: (map['note'] as String?) ?? '',
+      // The admin panel writes both `project` and `reference` for expenses;
+      // donations only carry `reference` (the donor name).
+      reference: _readString(map['reference'], _readString(map['project'])),
+      // The admin panel writes `notes`; older app-created docs use `note`.
+      note: _readString(map['note'], _readString(map['notes'])),
       createdAt: _readDate(map['createdAt']),
+      category: _readString(map['category']),
+      donationId: _readString(map['donationId']),
     );
   }
 }
-
-/// Represents a payment account added by admin from which users can
-/// send donations (e.g. bKash, Nagad, Bank account).
-/// Admin manages this in the `donation_accounts` Firestore collection.
-class DonationAccount {
-  const DonationAccount({
-    required this.id,
-    required this.name,
-    required this.accountNumber,
-    required this.provider,
-    required this.isActive,
-    this.instructions = '',
-  });
-
-  final String id;
-  final String name;          // e.g. "গ্রাম উন্নয়ন তহবিল"
-  final String accountNumber; // e.g. "01XXXXXXXXX"
-  final String provider;      // 'bKash' | 'Nagad' | 'Dutch-Bangla' | 'Bank' | ...
-  final bool isActive;
-  final String instructions;  // optional note from admin
-
-  factory DonationAccount.fromDoc(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
-    final map = doc.data() ?? <String, dynamic>{};
-    return DonationAccount(
-      id: doc.id,
-      name: (map['name'] as String?) ?? '',
-      accountNumber: (map['accountNumber'] as String?) ?? '',
-      provider: (map['provider'] as String?) ?? 'bKash',
-      isActive: (map['isActive'] as bool?) ?? true,
-      instructions: (map['instructions'] as String?) ?? '',
-    );
-  }
-}
-
 
 class Citizen {
   const Citizen({
@@ -249,6 +310,11 @@ class Citizen {
     required this.phone,
     required this.photoUrl,
     required this.village,
+    this.address = '',
+    this.email = '',
+    this.bloodGroup = '',
+    this.dateOfBirth = '',
+    this.blocked = false,
   });
 
   final String id;
@@ -257,16 +323,33 @@ class Citizen {
   final String phone;
   final String photoUrl;
   final String village;
+  final String address;
+  final String email;
+  final String bloodGroup;
+  final String dateOfBirth;
 
-  factory Citizen.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final map = doc.data() ?? <String, dynamic>{};
+  /// Set by an admin from the web panel. Blocked citizens are hidden from the
+  /// public directory and are signed out of the app.
+  final bool blocked;
+
+  factory Citizen.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) =>
+      Citizen.fromMap(doc.id, doc.data() ?? const <String, dynamic>{});
+
+  /// Parses a Firestore document body. Separate from [Citizen.fromDoc]
+  /// so parsing can be tested without constructing a snapshot.
+  factory Citizen.fromMap(String id, Map<String, dynamic> map) {
     return Citizen(
-      id: doc.id,
-      name: (map['name'] as String?) ?? '',
-      profession: (map['profession'] as String?) ?? '',
-      phone: (map['phone'] as String?) ?? '',
-      photoUrl: (map['photoUrl'] as String?) ?? '',
-      village: (map['village'] as String?) ?? '',
+      id: id,
+      name: _readString(map['name']),
+      profession: _readString(map['profession']),
+      phone: _readString(map['phone']),
+      photoUrl: _readString(map['photoUrl']),
+      village: _readString(map['village']),
+      address: _readString(map['address']),
+      email: _readString(map['email']),
+      bloodGroup: _readString(map['bloodGroup']),
+      dateOfBirth: _readString(map['dateOfBirth']),
+      blocked: (map['blocked'] as bool?) ?? false,
     );
   }
 }
@@ -294,50 +377,18 @@ class AppNotification {
     return 'Village update available';
   }
 
-  factory AppNotification.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final map = doc.data() ?? <String, dynamic>{};
+  factory AppNotification.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) =>
+      AppNotification.fromMap(doc.id, doc.data() ?? const <String, dynamic>{});
+
+  /// Parses a Firestore document body. Separate from [AppNotification.fromDoc]
+  /// so parsing can be tested without constructing a snapshot.
+  factory AppNotification.fromMap(String id, Map<String, dynamic> map) {
     return AppNotification(
-      id: doc.id,
-      type: (map['type'] as String?) ?? 'project',
-      title: (map['title'] as String?) ?? '',
-      body: (map['body'] as String?) ?? '',
+      id: id,
+      type: _readString(map['type'], 'project'),
+      title: _readString(map['title']),
+      body: _readString(map['body']),
       createdAt: _readDate(map['createdAt']),
     );
   }
-}
-
-class Leader {
-  const Leader({
-    required this.id,
-    required this.name,
-    required this.role,
-    required this.experience,
-    required this.photoUrl,
-    required this.isOnline,
-    required this.phone,
-    required this.email,
-  });
-
-  final String id;
-  final String name;
-  final String role;
-  final String experience;
-  final String photoUrl;
-  final bool isOnline;
-  final String phone;
-  final String email;
-}
-
-class Comment {
-  const Comment({
-    required this.id,
-    required this.authorName,
-    required this.text,
-    required this.createdAt,
-  });
-
-  final String id;
-  final String authorName;
-  final String text;
-  final DateTime createdAt;
 }

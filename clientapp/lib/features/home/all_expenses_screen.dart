@@ -6,6 +6,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/loading_shimmer.dart';
 import '../../models.dart';
 
 class AllExpensesScreen extends ConsumerStatefulWidget {
@@ -27,22 +29,50 @@ class _AllExpensesScreenState extends ConsumerState<AllExpensesScreen> {
     final newestFirst = ref.watch(expenseSortNewestFirstProvider);
 
     if (dashAsync.isLoading || filteredExpensesAsync.isLoading || totalExpensesAsync.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: context.canvas,
+        appBar: AppBar(title: const Text('মোট ব্যয়')),
+        body: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            children: const [
+              CardSkeleton(height: 110),
+              SizedBox(height: AppSpacing.lg),
+              Expanded(child: ListSkeleton(itemCount: 5)),
+            ],
+          ),
+        ),
+      );
     }
 
-    if (dashAsync.hasError) {
-      return Scaffold(body: Center(child: Text('ত্রুটি: ${dashAsync.error}')));
-    }
-    if (filteredExpensesAsync.hasError) {
-      return Scaffold(body: Center(child: Text('ত্রুটি: ${filteredExpensesAsync.error}')));
-    }
-    if (totalExpensesAsync.hasError) {
-      return Scaffold(body: Center(child: Text('ত্রুটি: ${totalExpensesAsync.error}')));
+    if (dashAsync.hasError && !dashAsync.hasValue) {
+      return Scaffold(
+        backgroundColor: context.canvas,
+        appBar: AppBar(title: const Text('মোট ব্যয়')),
+        body: Center(
+          child: EmptyState(
+            icon: Icons.error_outline_rounded,
+            title: 'ব্যয়ের তথ্য লোড করা যায়নি',
+            subtitle: 'ইন্টারনেট সংযোগ পরীক্ষা করে পুনরায় চেষ্টা করুন',
+            actionLabel: 'পুনরায় চেষ্টা করুন',
+            onAction: () {
+              ref.invalidate(dashboardProvider);
+              ref.invalidate(fundTransactionsProvider);
+            },
+          ),
+        ),
+      );
     }
 
-    final overview = dashAsync.requireValue;
-    final filtered = filteredExpensesAsync.requireValue;
-    final totalFromTx = totalExpensesAsync.requireValue;
+    final overview = dashAsync.valueOrNull ??
+        const VillageOverview(
+          name: 'আল ইসলাহ',
+          totalCitizens: 0,
+          totalFundCollected: 0,
+          totalSpent: 0,
+        );
+    final filtered = filteredExpensesAsync.valueOrNull ?? [];
+    final totalFromTx = totalExpensesAsync.valueOrNull ?? 0.0;
 
     final displayTotal = overview.totalSpent > 0
         ? overview.totalSpent
@@ -66,188 +96,187 @@ class _AllExpensesScreenState extends ConsumerState<AllExpensesScreen> {
           ),
         ],
       ),
-      body: CustomScrollView(
-        slivers: [
-          // ── Summary card ──────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Container(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(AppRadius.xxl),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.error.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+      body: RefreshIndicator(
+        color: AppColors.primary,
+        backgroundColor: context.surface,
+        onRefresh: () async {
+          ref.invalidate(dashboardProvider);
+          ref.invalidate(fundTransactionsProvider);
+        },
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            // ── Summary card ──────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Container(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                    borderRadius: BorderRadius.circular(AppRadius.xxl),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.error.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
                       ),
-                      child: const Icon(Icons.payments_rounded,
-                          color: Colors.white, size: 26),
-                    ),
-                    AppSpacing.wLg,
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                        child: const Icon(Icons.payments_rounded,
+                            color: Colors.white, size: 26),
+                      ),
+                      AppSpacing.wLg,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('মোট ব্যয়',
+                                style: TextStyle(
+                                    color: Colors.white70, fontSize: 13)),
+                            const SizedBox(height: 4),
+                            Text(
+                              '৳${_amtFmt.format(displayTotal)}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Text('মোট ব্যয়',
+                          const Text('ব্যালেন্স',
                               style: TextStyle(
-                                  color: Colors.white70, fontSize: 13)),
-                          const SizedBox(height: 4),
+                                  color: Colors.white70, fontSize: 11)),
+                          const SizedBox(height: 2),
                           Text(
-                            '৳${_amtFmt.format(displayTotal)}',
+                            '৳${_amtFmt.format(overview.availableBalance)}',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.full),
+                            ),
+                            child: Text(
+                              '${filtered.length} টি লেনদেন',
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 11),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Text('ব্যালেন্স',
-                            style: TextStyle(
-                                color: Colors.white70, fontSize: 11)),
-                        const SizedBox(height: 2),
-                        Text(
-                          '৳${_amtFmt.format(overview.availableBalance)}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.full),
-                          ),
-                          child: Text(
-                            '${filtered.length} টি লেনদেন',
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 11),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // ── Search bar ────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.md,
-              ),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'প্রকল্প বা বিবরণ খুঁজুন…',
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                  border: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppRadius.xl),
-                    borderSide: BorderSide.none,
+                    ],
                   ),
-                  filled: true,
-                  fillColor: context.card,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 12),
                 ),
-                onChanged: (v) => ref.read(expenseSearchQueryProvider.notifier).setQuery(v),
               ),
             ),
-          ),
 
-          // ── Section label ─────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, AppSpacing.sm,
-                AppSpacing.lg, AppSpacing.md,
-              ),
-              child: Text(
-                filtered.isEmpty
-                    ? 'কোনো ফলাফল নেই'
-                    : 'ব্যয়ের বিবরণ (${filtered.length})',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 15),
-              ),
-            ),
-          ),
-
-          // ── List ──────────────────────────────────
-          if (filtered.isEmpty)
-            const SliverToBoxAdapter(
+            // ── Search bar ────────────────────────────
+            SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.all(AppSpacing.xxxl),
-                child: Column(
-                  children: [
-                    Icon(Icons.receipt_long_rounded,
-                        size: 64, color: Colors.grey),
-                    SizedBox(height: 12),
-                    Text(
-                      'কোনো ব্যয়ের রেকর্ড পাওয়া যায়নি\n(অ্যাডমিন প্যানেল থেকে ব্যয় যোগ করুন)',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.md,
                 ),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xxxl,
-              ),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (ctx, i) {
-                    if (i.isOdd) {
-                      return const SizedBox(height: AppSpacing.sm);
-                    }
-                    return _ExpenseTile(
-                      tx: filtered[i ~/ 2],
-                      totalSpent: displayTotal,
-                      amtFmt: _amtFmt,
-                      dateFmt: _dateFmt,
-                    );
-                  },
-                  childCount: filtered.length * 2 - 1,
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'প্রকল্প বা বিবরণ খুঁজুন…',
+                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppRadius.xl),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: context.card,
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onChanged: (v) => ref.read(expenseSearchQueryProvider.notifier).setQuery(v),
                 ),
               ),
             ),
-        ],
+
+            // ── Section label ─────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.sm,
+                  AppSpacing.lg, AppSpacing.md,
+                ),
+                child: Text(
+                  filtered.isEmpty
+                      ? 'কোনো ফলাফল নেই'
+                      : 'ব্যয়ের বিবরণ (${filtered.length})',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 15),
+                ),
+              ),
+            ),
+
+            // ── List ──────────────────────────────────
+            if (filtered.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: EmptyState(
+                  icon: Icons.receipt_long_rounded,
+                  title: 'কোনো ব্যয়ের রেকর্ড নেই',
+                  description: 'এখনো পর্যন্ত কোনো ব্যয় রেকর্ড করা হয়নি',
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xxxl,
+                ),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) {
+                      if (i.isOdd) {
+                        return const SizedBox(height: AppSpacing.sm);
+                      }
+                      return _ExpenseTile(
+                        tx: filtered[i ~/ 2],
+                        totalSpent: displayTotal,
+                        amtFmt: _amtFmt,
+                        dateFmt: _dateFmt,
+                      );
+                    },
+                    childCount: filtered.length * 2 - 1,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 }
-
 
 // ─── Expense tile ─────────────────────────────────────────────────────────────
 

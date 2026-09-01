@@ -11,7 +11,7 @@ import '../../core/widgets/motion.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/loading_shimmer.dart';
 import '../../core/providers/providers.dart';
-import '../../data_service.dart';
+import '../../services/donation_service.dart';
 
 class DonationCheckoutScreen extends ConsumerStatefulWidget {
   const DonationCheckoutScreen({super.key});
@@ -682,7 +682,7 @@ class _DonationCheckoutScreenState
     setState(() => _isSubmitting = true);
 
     try {
-      await DataService.instance.addDonation(
+      await DonationService.instance.addDonation(
         amount: amount,
         paymentMethod: selectedAccount['type'] ?? 'Manual Transfer',
         transactionId: transactionId,

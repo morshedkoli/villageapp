@@ -8,7 +8,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/motion.dart';
-import '../../data_service.dart';
+import '../../services/auth_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Login Screen — full redesign
@@ -85,7 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     _dismissKeyboard();
     setState(() => _loading = true);
     try {
-      await DataService.instance.signInWithPhoneAndPassword(
+      await AuthService.instance.signInWithPhoneAndPassword(
         phone: phone,
         password: password,
       );
@@ -103,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     _dismissKeyboard();
     setState(() => _loading = true);
     try {
-      await DataService.instance.signInWithGoogle();
+      await AuthService.instance.signInWithGoogle();
       if (!mounted) return;
       context.go('/home');
     } catch (e) {

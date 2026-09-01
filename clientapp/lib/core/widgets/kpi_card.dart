@@ -171,7 +171,7 @@ class _Bone extends StatelessWidget {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 900),
-      builder: (_, v, _) {
+      builder: (context, v, child) {
         return Container(
           width: width,
           height: height,

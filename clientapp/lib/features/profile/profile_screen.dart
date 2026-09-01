@@ -11,7 +11,7 @@ import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/loading_shimmer.dart';
 import '../../core/providers/providers.dart';
-import '../../data_service.dart';
+import '../../services/auth_service.dart';
 import '../../models.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ class _LoginGateState extends State<_LoginGate> {
   Future<void> _signInWithGoogle() async {
     setState(() => _loading = true);
     try {
-      await DataService.instance.signInWithGoogle();
+      await AuthService.instance.signInWithGoogle();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -643,6 +643,7 @@ class _ActionMenu extends ConsumerWidget {
       _TileData(Icons.volunteer_activism_outlined, 'আমার দান', AppColors.success, () => context.push('/all-donations')),
       _TileData(Icons.report_outlined, 'আমার রিপোর্ট', AppColors.warning, () => context.push('/problems')),
       _TileData(Icons.construction_outlined, 'সব প্রকল্প', AppColors.info, () => context.push('/projects')),
+      _TileData(Icons.insert_chart_outlined, 'হিসাব ও প্রতিবেদন', AppColors.accentTerracotta, () => context.push('/reports')),
       _TileData(Icons.settings_outlined, 'সেটিংস', context.textSecondary, () => context.push('/settings')),
       _TileData(Icons.logout_rounded, 'লগআউট', AppColors.error, () => _confirmSignOut(context, ref)),
     ];
@@ -674,7 +675,7 @@ class _ActionMenu extends ConsumerWidget {
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () async {
               Navigator.pop(ctx);
-              await DataService.instance.signOut();
+              await AuthService.instance.signOut();
             },
             child: const Text('লগআউট'),
           ),
@@ -943,11 +944,11 @@ class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
         if (password.isEmpty) {
           throw StateError('ফোন নম্বর পরিবর্তন করতে পাসওয়ার্ড প্রয়োজন।');
         }
-        await DataService.instance.updateUserPhone(phone, password);
+        await AuthService.instance.updateUserPhone(phone, password);
       }
 
       // Always update the general profile in Firestore
-      await DataService.instance.updateUserProfile(
+      await AuthService.instance.updateUserProfile(
         name: name,
         phone: phone,
         profession: profession,

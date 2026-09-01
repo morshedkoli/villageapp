@@ -2,14 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
 import 'app.dart';
 import 'connectivity_service.dart';
 import 'core/theme/app_colors.dart';
-import 'data_service.dart';
 import 'firebase_options.dart';
 import 'push_notification_service.dart';
+import 'services/sync_service.dart';
 import 'ui/accessibility.dart';
 
 Future<void> main() async {
@@ -37,16 +36,6 @@ Future<void> main() async {
     );
   };
 
-  await Hive.initFlutter();
-  await Future.wait([
-    Hive.openBox<String>('village_overview'),
-    Hive.openBox<String>('donations'),
-    Hive.openBox<String>('problems'),
-    Hive.openBox<String>('projects'),
-    Hive.openBox<String>('citizens'),
-    Hive.openBox<String>('notifications'),
-  ]);
-
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   FirebaseFirestore.instance.settings = const Settings(
@@ -57,7 +46,9 @@ Future<void> main() async {
   await ConnectivityService.instance.initialize();
   await accessibilityController.loadSavedPreferences();
   await PushNotificationService.instance.initialize(navigatorKey);
-  await DataService.instance.initialize();
+  // Replays donations and problem reports queued while the device was offline,
+  // and keeps replaying them whenever connectivity comes back.
+  SyncService.instance.start();
 
   runApp(const ProviderScope(child: VillageDevelopmentApp()));
 }

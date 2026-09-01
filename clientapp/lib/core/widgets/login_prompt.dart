@@ -4,7 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
-import '../../data_service.dart';
+import '../../services/auth_service.dart';
 
 /// Shows a bottom sheet asking the user to log in.
 /// [onSuccess] is called after a successful sign-in.
@@ -37,7 +37,7 @@ class _LoginPromptSheetState extends State<_LoginPromptSheet> {
   Future<void> _signInWithGoogle() async {
     setState(() => _loading = true);
     try {
-      await DataService.instance.signInWithGoogle();
+      await AuthService.instance.signInWithGoogle();
       if (!mounted) return;
       Navigator.of(context).pop();
       widget.onSuccess?.call();
@@ -147,7 +147,7 @@ class _LoginPromptSheetState extends State<_LoginPromptSheet> {
                   : Image.network(
                       'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/120px-Google_%22G%22_logo.svg.png',
                       height: 20,
-                      errorBuilder: (_, _, _) =>
+                      errorBuilder: (_, __, ___) =>
                           const Icon(Icons.g_mobiledata, size: 24),
                     ),
               label: Text(

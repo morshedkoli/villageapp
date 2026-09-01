@@ -14,9 +14,11 @@ import '../../features/problems/report_problem_screen.dart';
 import '../../features/citizens/citizen_directory_screen.dart';
 import '../../features/citizens/citizen_profile_screen.dart';
 import '../../features/projects/projects_screen.dart';
+import '../../features/projects/project_details_screen.dart';
 import '../../features/leaders/leaders_screen.dart';
 import '../../features/notifications/notification_screen.dart';
 import '../../features/profile/profile_screen.dart';
+import '../../features/reports/reports_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../widgets/shell_screen.dart';
 
@@ -120,6 +122,20 @@ final GoRouter appRouter = GoRouter(
       name: 'projects',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const ProjectsScreen(),
+    ),
+    GoRoute(
+      path: '/projects/:id',
+      name: 'project-details',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => ProjectDetailsScreen(
+        projectId: state.pathParameters['id'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: '/reports',
+      name: 'reports',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ReportsScreen(),
     ),
     GoRoute(
       path: '/leaders',

@@ -1,190 +1,241 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data_service.dart';
 import '../../models.dart';
+import '../../services/auth_service.dart';
+import '../../services/citizen_service.dart';
+import '../../services/donation_service.dart';
+import '../../services/fund_service.dart';
+import '../../services/notification_service.dart';
+import '../../services/problem_service.dart';
+import '../../services/project_service.dart';
+import '../../services/village_service.dart';
 
-final dataServiceProvider = Provider<DataService>((ref) => DataService.instance);
+/// Number of items the home screen previews for each section.
+const int kHomePreviewLimit = 8;
 
-final dashboardProvider = StreamProvider<VillageOverview>((ref) {
-  return DataService.instance.villageOverview();
-});
+// ─── Services ───────────────────────────────────────────────────────
 
-final donationsProvider = StreamProvider<List<Donation>>((ref) {
-  return DataService.instance.donations(limit: 100);
-});
+final authServiceProvider = Provider<AuthService>((_) => AuthService.instance);
+final donationServiceProvider =
+    Provider<DonationService>((_) => DonationService.instance);
+final problemServiceProvider =
+    Provider<ProblemService>((_) => ProblemService.instance);
+final notificationServiceProvider =
+    Provider<NotificationService>((_) => NotificationService.instance);
 
-final recentDonationsProvider = StreamProvider<List<Donation>>((ref) {
-  return DataService.instance.donations(limit: 8);
-});
-
-final problemsProvider = StreamProvider<List<ProblemReport>>((ref) {
-  return DataService.instance.problems(limit: 100);
-});
-
-final recentProblemsProvider = StreamProvider<List<ProblemReport>>((ref) {
-  return DataService.instance.problems(limit: 8);
-});
-
-final projectsProvider = StreamProvider<List<DevelopmentProject>>((ref) {
-  return DataService.instance.projects(limit: 100);
-});
-
-final fundTransactionsProvider = StreamProvider<List<FundTransaction>>((ref) {
-  return DataService.instance.fundTransactions();
-});
-
-final donationAccountsProvider = StreamProvider<List<Map<String, String>>>((ref) {
-  return DataService.instance.donationAccounts();
-});
-
-final citizensProvider = StreamProvider<List<Citizen>>((ref) {
-  return DataService.instance.citizens();
-});
-
-final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
-  return DataService.instance.notifications(limit: 100);
-});
-
-final unreadCountProvider = StreamProvider<int>((ref) {
-  return DataService.instance.unreadNotificationCount();
-});
-
-final notificationReadIdsProvider = StreamProvider<Set<String>>((ref) {
-  return DataService.instance.myReadNotificationIds();
-});
-
-final citizenCountProvider = StreamProvider<int>((ref) {
-  return DataService.instance.citizenCount();
-});
-
-final problemsCountProvider = StreamProvider<int>((ref) {
-  return DataService.instance.pendingProblemsCount();
-});
-
-final projectsCountProvider = StreamProvider<int>((ref) {
-  return DataService.instance.projectsCount();
-});
-
-final isAuthenticatedProvider = StreamProvider<bool>((ref) {
-  return DataService.instance.authState().map((user) => user != null);
-});
+// ─── Auth ───────────────────────────────────────────────────────────
 
 final currentFirebaseUserProvider = StreamProvider<User?>((ref) {
-  return DataService.instance.authState();
+  return ref.watch(authServiceProvider).authState();
 });
 
-final myDonationsProvider = StreamProvider<List<Donation>>((ref) {
-  ref.watch(currentFirebaseUserProvider);
-  return DataService.instance.myDonations();
+final isAuthenticatedProvider = Provider<AsyncValue<bool>>((ref) {
+  return ref.watch(currentFirebaseUserProvider).whenData((user) => user != null);
 });
 
-final myProblemsProvider = StreamProvider<List<ProblemReport>>((ref) {
-  ref.watch(currentFirebaseUserProvider);
-  return DataService.instance.myProblems();
+/// `true` while an admin has blocked the signed-in account.
+final isBlockedProvider = StreamProvider<bool>((ref) {
+  return ref.watch(authServiceProvider).blockedState();
 });
 
 final currentUserProfileProvider =
     FutureProvider<Map<String, dynamic>?>((ref) async {
   ref.watch(currentFirebaseUserProvider);
-  return DataService.instance.getUserProfile();
+  return ref.watch(authServiceProvider).getUserProfile();
 });
 
-final topDonorsProvider = Provider<AsyncValue<List<MapEntry<String, double>>>>((ref) {
+// ─── Village, donations, problems, projects ─────────────────────────
+
+final dashboardProvider = StreamProvider<VillageOverview>((ref) {
+  return VillageService.instance.villageOverview();
+});
+
+final donationsProvider = StreamProvider<List<Donation>>((ref) {
+  return ref.watch(donationServiceProvider).donations();
+});
+
+final recentDonationsProvider = StreamProvider<List<Donation>>((ref) {
+  return ref.watch(donationServiceProvider).donations(limit: kHomePreviewLimit);
+});
+
+final donationAccountsProvider =
+    StreamProvider<List<Map<String, String>>>((ref) {
+  return ref.watch(donationServiceProvider).donationAccounts();
+});
+
+final myDonationsProvider = StreamProvider<List<Donation>>((ref) {
+  ref.watch(currentFirebaseUserProvider);
+  return ref.watch(donationServiceProvider).myDonations();
+});
+
+final problemsProvider = StreamProvider<List<ProblemReport>>((ref) {
+  return ref.watch(problemServiceProvider).problems();
+});
+
+final recentProblemsProvider = StreamProvider<List<ProblemReport>>((ref) {
+  return ref.watch(problemServiceProvider).problems(limit: kHomePreviewLimit);
+});
+
+final myProblemsProvider = StreamProvider<List<ProblemReport>>((ref) {
+  ref.watch(currentFirebaseUserProvider);
+  return ref.watch(problemServiceProvider).myProblems();
+});
+
+/// The signed-in citizen's vote on one problem: `1`, `-1`, or `null`.
+final myVoteOnProblemProvider =
+    StreamProvider.family<int?, String>((ref, problemId) {
+  ref.watch(currentFirebaseUserProvider);
+  return ref.watch(problemServiceProvider).myVoteOnProblem(problemId);
+});
+
+final projectsProvider = StreamProvider<List<DevelopmentProject>>((ref) {
+  return ProjectService.instance.projects();
+});
+
+/// A single project by id, sourced from the already-cached projects stream.
+final projectByIdProvider =
+    Provider.family<AsyncValue<DevelopmentProject?>, String>((ref, id) {
+  return ref.watch(projectsProvider).whenData((projects) {
+    for (final project in projects) {
+      if (project.id == id) return project;
+    }
+    return null;
+  });
+});
+
+final citizensProvider = StreamProvider<List<Citizen>>((ref) {
+  return CitizenService.instance.citizens();
+});
+
+// ─── Notifications ──────────────────────────────────────────────────
+
+final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
+  return ref.watch(notificationServiceProvider).notifications();
+});
+
+final unreadCountProvider = StreamProvider<int>((ref) {
+  return ref.watch(notificationServiceProvider).unreadNotificationCount();
+});
+
+final notificationReadIdsProvider = StreamProvider<Set<String>>((ref) {
+  return ref.watch(notificationServiceProvider).myReadNotificationIds();
+});
+
+// ─── Fund ledger ────────────────────────────────────────────────────
+
+final fundTransactionsProvider = StreamProvider<List<FundTransaction>>((ref) {
+  return FundService.instance.fundTransactions();
+});
+
+final totalExpensesProvider = Provider<AsyncValue<double>>((ref) {
+  return ref.watch(fundTransactionsProvider).whenData(
+        (all) => all
+            .where((t) => t.isExpense)
+            .fold<double>(0, (sum, t) => sum + t.amount),
+      );
+});
+
+// ─── Derived views ──────────────────────────────────────────────────
+
+/// Top five donors by total approved amount.
+final topDonorsProvider =
+    Provider<AsyncValue<List<MapEntry<String, double>>>>((ref) {
   return ref.watch(donationsProvider).whenData((donations) {
     final totals = <String, double>{};
-    for (final d in donations) {
-      if (d.donorName.isNotEmpty) {
-        totals[d.donorName] = (totals[d.donorName] ?? 0) + d.amount;
-      }
+    for (final donation in donations) {
+      if (donation.donorName.isEmpty) continue;
+      totals[donation.donorName] =
+          (totals[donation.donorName] ?? 0) + donation.amount;
     }
-    final sorted = totals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final sorted = totals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
     return sorted.take(5).toList();
   });
 });
 
-class ExpenseSearchNotifier extends Notifier<String> {
+/// A plain text query, shared by the list search fields.
+class SearchQueryNotifier extends Notifier<String> {
   @override
   String build() => '';
+
   void setQuery(String query) => state = query;
 }
-final expenseSearchQueryProvider = NotifierProvider<ExpenseSearchNotifier, String>(ExpenseSearchNotifier.new);
+
+final expenseSearchQueryProvider =
+    NotifierProvider<SearchQueryNotifier, String>(SearchQueryNotifier.new);
+
+final donationSearchQueryProvider =
+    NotifierProvider<SearchQueryNotifier, String>(SearchQueryNotifier.new);
 
 class ExpenseSortNotifier extends Notifier<bool> {
   @override
   bool build() => true;
+
   void setSort(bool newestFirst) => state = newestFirst;
 }
-final expenseSortNewestFirstProvider = NotifierProvider<ExpenseSortNotifier, bool>(ExpenseSortNotifier.new);
 
-final filteredExpensesProvider = Provider<AsyncValue<List<FundTransaction>>>((ref) {
-  final txsAsync = ref.watch(fundTransactionsProvider);
-  final search = ref.watch(expenseSearchQueryProvider);
+final expenseSortNewestFirstProvider =
+    NotifierProvider<ExpenseSortNotifier, bool>(ExpenseSortNotifier.new);
+
+/// How the donation list is ordered.
+enum DonationSort { newest, largest }
+
+class DonationSortNotifier extends Notifier<DonationSort> {
+  @override
+  DonationSort build() => DonationSort.newest;
+
+  void setSort(DonationSort sort) => state = sort;
+}
+
+final donationSortProvider =
+    NotifierProvider<DonationSortNotifier, DonationSort>(
+  DonationSortNotifier.new,
+);
+
+final filteredExpensesProvider =
+    Provider<AsyncValue<List<FundTransaction>>>((ref) {
+  final query = ref.watch(expenseSearchQueryProvider).trim().toLowerCase();
   final newestFirst = ref.watch(expenseSortNewestFirstProvider);
 
-  return txsAsync.whenData((allTx) {
-    final expenses = allTx.where((t) => t.isExpense).toList();
-    final query = search.trim().toLowerCase();
-    
-    final filtered = query.isEmpty
-        ? expenses
-        : expenses
-            .where((t) =>
-                t.reference.toLowerCase().contains(query) ||
-                t.note.toLowerCase().contains(query) ||
-                t.amount.toString().contains(query))
-            .toList();
-
-    if (newestFirst) {
-      filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    } else {
-      filtered.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    }
-    return filtered;
-  });
-});
-
-class DonationSearchNotifier extends Notifier<String> {
-  @override
-  String build() => '';
-  void setQuery(String query) => state = query;
-}
-final donationSearchQueryProvider = NotifierProvider<DonationSearchNotifier, String>(DonationSearchNotifier.new);
-
-class DonationSortNotifier extends Notifier<String> {
-  @override
-  String build() => 'newest';
-  void setSort(String sortType) => state = sortType;
-}
-final donationSortProvider = NotifierProvider<DonationSortNotifier, String>(DonationSortNotifier.new);
-
-final filteredDonationsProvider = Provider<AsyncValue<List<Donation>>>((ref) {
-  final donationsAsync = ref.watch(donationsProvider);
-  final search = ref.watch(donationSearchQueryProvider);
-  final sort = ref.watch(donationSortProvider);
-
-  return donationsAsync.whenData((all) {
-    var list = all.where((d) {
-      if (search.isEmpty) return true;
-      return d.donorName.toLowerCase().contains(search) ||
-          d.amount.toString().contains(search) ||
-          d.paymentMethod.toLowerCase().contains(search);
+  return ref.watch(fundTransactionsProvider).whenData((all) {
+    final expenses = all.where((t) => t.isExpense).where((t) {
+      if (query.isEmpty) return true;
+      return t.reference.toLowerCase().contains(query) ||
+          t.note.toLowerCase().contains(query) ||
+          t.category.toLowerCase().contains(query) ||
+          t.amount.toString().contains(query);
     }).toList();
 
-    if (sort == 'newest') {
-      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    } else {
-      list.sort((a, b) => b.amount.compareTo(a.amount));
-    }
-    return list;
+    expenses.sort(
+      (a, b) => newestFirst
+          ? b.createdAt.compareTo(a.createdAt)
+          : a.createdAt.compareTo(b.createdAt),
+    );
+    return expenses;
   });
 });
 
-final totalExpensesProvider = Provider<AsyncValue<double>>((ref) {
-  return ref.watch(fundTransactionsProvider).whenData((allTx) {
-    return allTx.where((t) => t.isExpense).fold<double>(0.0, (sum, t) => sum + t.amount);
+final filteredDonationsProvider = Provider<AsyncValue<List<Donation>>>((ref) {
+  // Lower-cased here: the raw query used to be compared against lower-cased
+  // fields, so any capital letter the user typed matched nothing.
+  final query = ref.watch(donationSearchQueryProvider).trim().toLowerCase();
+  final sort = ref.watch(donationSortProvider);
+
+  return ref.watch(donationsProvider).whenData((all) {
+    final donations = all.where((d) {
+      if (query.isEmpty) return true;
+      return d.donorName.toLowerCase().contains(query) ||
+          d.paymentMethod.toLowerCase().contains(query) ||
+          d.amount.toString().contains(query);
+    }).toList();
+
+    donations.sort(
+      (a, b) => switch (sort) {
+        DonationSort.newest => b.createdAt.compareTo(a.createdAt),
+        DonationSort.largest => b.amount.compareTo(a.amount),
+      },
+    );
+    return donations;
   });
 });
-
-
-

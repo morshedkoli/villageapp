@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
+import 'core/widgets/blocked_gate.dart';
 import 'ui/accessibility.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -60,7 +61,7 @@ class _VillageDevelopmentAppState extends ConsumerState<VillageDevelopmentApp> {
           ),
           child: Directionality(
             textDirection: TextDirection.ltr,
-            child: child ?? const SizedBox.shrink(),
+            child: BlockedGate(child: child ?? const SizedBox.shrink()),
           ),
         );
       },

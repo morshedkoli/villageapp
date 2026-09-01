@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/providers/providers.dart';
 import '../../models.dart';
 import '../../core/theme/app_colors.dart';
@@ -13,6 +14,52 @@ import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/login_prompt.dart';
 import '../../core/widgets/loading_shimmer.dart';
+
+Future<void> _makePhoneCall(BuildContext context, String phoneNumber) async {
+  final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+  if (cleanNumber.isEmpty) return;
+  final uri = Uri.parse('tel:$cleanNumber');
+  try {
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('কল সংযোগ করা সম্ভব হচ্ছে না')),
+        );
+      }
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('কল সংযোগ করা সম্ভব হচ্ছে না')),
+      );
+    }
+  }
+}
+
+Future<void> _sendSms(BuildContext context, String phoneNumber) async {
+  final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+  if (cleanNumber.isEmpty) return;
+  final uri = Uri.parse('sms:$cleanNumber');
+  try {
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('বার্তা পাঠানো সম্ভব হচ্ছে না')),
+        );
+      }
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('বার্তা পাঠানো সম্ভব হচ্ছে না')),
+      );
+    }
+  }
+}
 
 class CitizenDirectoryScreen extends ConsumerStatefulWidget {
   const CitizenDirectoryScreen({super.key});
@@ -60,7 +107,7 @@ class _CitizenDirectoryScreenState extends ConsumerState<CitizenDirectoryScreen>
     final citizensAsync = ref.watch(citizensProvider);
     final isAuthenticated = ref
         .watch(isAuthenticatedProvider)
-        .when(data: (v) => v, error: (_, _) => false, loading: () => false);
+        .when(data: (v) => v, error: (_, __) => false, loading: () => false);
 
     return Scaffold(
       backgroundColor: context.canvas,
@@ -73,7 +120,7 @@ class _CitizenDirectoryScreenState extends ConsumerState<CitizenDirectoryScreen>
           child: ListSkeleton(itemCount: 6),
         ),
         error: (e, _) => Center(
-          child: EmptyStateWidget(
+          child: EmptyState(
             icon: Icons.error_outline_rounded,
             title: 'নাগরিক তথ্য লোড করা যায়নি',
             subtitle: 'ইন্টারনেট সংযোগ চেক করে পুনরায় চেষ্টা করুন',
@@ -136,7 +183,7 @@ class _CitizenDirectoryScreenState extends ConsumerState<CitizenDirectoryScreen>
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                   itemCount: _filters.length,
-                  separatorBuilder: (_, _) => AppSpacing.wSm,
+                  separatorBuilder: (_, __) => AppSpacing.wSm,
                   itemBuilder: (context, index) {
                     final isSelected = _selectedFilter == index;
                     return ChoiceChip(
@@ -159,40 +206,66 @@ class _CitizenDirectoryScreenState extends ConsumerState<CitizenDirectoryScreen>
               AppSpacing.hMd,
               Expanded(
                 child: filtered.isEmpty
-                    ? EmptyState(
+                    ? const EmptyState(
                         icon: Icons.people_outline,
                         title: 'কোনো নাগরিক পাওয়া যায়নি',
                         description: 'অনুসন্ধানের সাথে মিলে এমন কেউ নেই',
                       )
-                    : GridView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                        itemCount: filtered.length,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.78,
-                          crossAxisSpacing: AppSpacing.md,
-                          mainAxisSpacing: AppSpacing.md,
-                        ),
-                        itemBuilder: (context, index) {
-                          final citizen = filtered[index];
-                          return _CitizenCard(
-                            citizen: citizen,
-                            isAuthenticated: isAuthenticated,
-                            onTap: () => context.push('/citizens/${citizen.id}'),
-                            onCall: isAuthenticated
-                                ? () {}
-                                : () => showLoginPrompt(
-                                      context,
-                                      reason: 'ফোন নম্বর দেখতে লগইন করুন',
-                                    ),
-                            onMessage: isAuthenticated
-                                ? () {}
-                                : () => showLoginPrompt(
-                                      context,
-                                      reason: 'যোগাযোগ করতে লগইন করুন',
-                                    ),
-                          );
+                    : RefreshIndicator(
+                        color: AppColors.primary,
+                        backgroundColor: context.surface,
+                        onRefresh: () async {
+                          ref.invalidate(citizensProvider);
                         },
+                        child: GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.lg,
+                            0,
+                            AppSpacing.lg,
+                            AppSpacing.massive,
+                          ),
+                          itemCount: filtered.length,
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.70,
+                            crossAxisSpacing: AppSpacing.md,
+                            mainAxisSpacing: AppSpacing.md,
+                          ),
+                          itemBuilder: (context, index) {
+                            final citizen = filtered[index];
+                            return _CitizenCard(
+                              citizen: citizen,
+                              isAuthenticated: isAuthenticated,
+                              onTap: () => context.push('/citizens/${citizen.id}'),
+                              onCall: () {
+                                if (isAuthenticated) {
+                                  _makePhoneCall(context, citizen.phone);
+                                } else {
+                                  showLoginPrompt(
+                                    context,
+                                    reason: 'ফোন নম্বর দেখতে ও কল করতে লগইন করুন',
+                                    onSuccess: () {
+                                      _makePhoneCall(context, citizen.phone);
+                                    },
+                                  );
+                                }
+                              },
+                              onMessage: () {
+                                if (isAuthenticated) {
+                                  _sendSms(context, citizen.phone);
+                                } else {
+                                  showLoginPrompt(
+                                    context,
+                                    reason: 'বার্তা পাঠাতে লগইন করুন',
+                                    onSuccess: () {
+                                      _sendSms(context, citizen.phone);
+                                    },
+                                  );
+                                }
+                              },
+                            );
+                          },
+                        ),
                       ),
               ),
             ],
@@ -227,102 +300,121 @@ class _CitizenCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return PressScale(
       onTap: onTap,
+      scale: 0.98,
       child: GlassCard(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            AvatarWidget(
-              initials: _initials(citizen.name),
-              size: 56,
-              showOnline: false,
-            ),
-            AppSpacing.hMd,
-            Text(
-              citizen.name,
-              style: context.textTheme.titleSmall?.copyWith(
-                color: context.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            AppSpacing.hXs,
-            Text(
-              citizen.profession,
-              style: context.textTheme.bodySmall?.copyWith(
-                color: context.textSecondary,
-              ),
-            ),
-            AppSpacing.hXs,
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            Column(
               children: [
-                Icon(Icons.location_on_outlined, size: 12, color: context.textTertiary),
-                AppSpacing.wXs,
-                Flexible(
-                  child: Text(
-                    citizen.village,
+                AvatarWidget(
+                  initials: _initials(citizen.name),
+                  size: 52,
+                  showOnline: false,
+                ),
+                AppSpacing.hSm,
+                Text(
+                  citizen.name,
+                  style: context.textTheme.titleSmall?.copyWith(
+                    color: context.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  citizen.profession.isNotEmpty ? citizen.profession : 'নাগরিক',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.textSecondary,
+                    fontSize: 12,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.location_on_outlined, size: 12, color: context.textTertiary),
+                    AppSpacing.wXs,
+                    Flexible(
+                      child: Text(
+                        citizen.village.isNotEmpty ? citizen.village : 'গ্রাম',
+                        style: context.textTheme.labelSmall?.copyWith(
+                          color: context.textTertiary,
+                          fontSize: 11,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                // Phone: visible only when authenticated
+                if (isAuthenticated && citizen.phone.isNotEmpty)
+                  Text(
+                    citizen.phone,
                     style: context.textTheme.labelSmall?.copyWith(
                       color: context.textTertiary,
+                      fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                  )
+                else
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lock_outline_rounded, size: 11, color: context.textTertiary),
+                      AppSpacing.wXs,
+                      Text(
+                        'লগইন করুন',
+                        style: context.textTheme.labelSmall?.copyWith(
+                          color: context.textTertiary,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
               ],
             ),
-            AppSpacing.hXs,
-            // Phone: visible only when authenticated
-            if (isAuthenticated)
-              Text(
-                citizen.phone,
-                style: context.textTheme.labelSmall?.copyWith(
-                  color: context.textTertiary,
-                ),
-              )
-            else
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.lock_outline_rounded, size: 11, color: context.textTertiary),
-                  AppSpacing.wXs,
-                  Text(
-                    'লগইন করুন',
-                    style: context.textTheme.labelSmall?.copyWith(
-                      color: context.textTertiary,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-            const Spacer(),
-            Container(
-              height: 1,
-              color: context.isDark ? AppColors.darkDivider : AppColors.lightDivider,
-            ),
-            AppSpacing.hSm,
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            Column(
               children: [
-                _ActionButton(
-                  icon: isAuthenticated
-                      ? Icons.phone_outlined
-                      : Icons.lock_outline_rounded,
-                  color: isAuthenticated ? AppColors.primary : context.textTertiary,
-                  onTap: onCall,
-                ),
                 Container(
-                  width: 1,
-                  height: 20,
+                  height: 1,
                   color: context.isDark ? AppColors.darkDivider : AppColors.lightDivider,
                 ),
-                _ActionButton(
-                  icon: isAuthenticated
-                      ? Icons.message_outlined
-                      : Icons.lock_outline_rounded,
-                  color: isAuthenticated ? AppColors.info : context.textTertiary,
-                  onTap: onMessage,
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _ActionButton(
+                      icon: isAuthenticated
+                          ? Icons.phone_outlined
+                          : Icons.lock_outline_rounded,
+                      tooltip: 'কল করুন',
+                      color: isAuthenticated ? AppColors.primary : context.textTertiary,
+                      onTap: onCall,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 20,
+                      color: context.isDark ? AppColors.darkDivider : AppColors.lightDivider,
+                    ),
+                    _ActionButton(
+                      icon: isAuthenticated
+                          ? Icons.message_outlined
+                          : Icons.lock_outline_rounded,
+                      tooltip: 'বার্তা পাঠান',
+                      color: isAuthenticated ? AppColors.info : context.textTertiary,
+                      onTap: onMessage,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -335,27 +427,37 @@ class _CitizenCard extends StatelessWidget {
 
 class _ActionButton extends StatelessWidget {
   final IconData icon;
+  final String tooltip;
   final Color color;
   final VoidCallback onTap;
 
   const _ActionButton({
     required this.icon,
+    required this.tooltip,
     required this.color,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressScale(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+      scale: 0.90,
+      child: Tooltip(
+        message: tooltip,
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: context.isDark ? 0.16 : 0.10),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Center(
+            child: Icon(icon, size: 18, color: color),
+          ),
         ),
-        child: Icon(icon, size: 18, color: color),
       ),
     );
   }
 }
+

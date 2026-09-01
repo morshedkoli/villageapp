@@ -49,7 +49,7 @@ class AvatarWidget extends StatelessWidget {
                     width: size,
                     height: size,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _Placeholder(
+                    errorBuilder: (_, __, ___) => _Placeholder(
                       initials: initials,
                       size: size,
                       bg: backgroundColor,

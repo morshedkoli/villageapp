@@ -7,6 +7,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/avatar_widget.dart';
+import '../../core/widgets/loading_shimmer.dart';
 import '../../models.dart';
 
 class AllDonationsScreen extends ConsumerStatefulWidget {
@@ -43,7 +44,10 @@ class _AllDonationsScreenState extends ConsumerState<AllDonationsScreen> {
         ],
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Padding(
+          padding: EdgeInsets.all(AppSpacing.lg),
+          child: ListSkeleton(itemCount: 6),
+        ),
         error: (e, _) => Center(child: Text('ত্রুটি: $e')),
         data: (filtered) {
           final total = filtered.fold<double>(0, (s, d) => s + d.amount);
@@ -57,7 +61,7 @@ class _AllDonationsScreenState extends ConsumerState<AllDonationsScreen> {
                 ),
                 child: TextField(
                   controller: _searchCtrl,
-                  onChanged: (v) => ref.read(donationSearchQueryProvider.notifier).setQuery(v.trim().toLowerCase()),
+                  onChanged: (v) => ref.read(donationSearchQueryProvider.notifier).setQuery(v),
                   decoration: InputDecoration(
                     hintText: 'দাতার নাম বা পরিমাণ অনুসন্ধান...',
                     prefixIcon: Icon(Icons.search, color: context.textSecondary),
@@ -114,7 +118,7 @@ class _AllDonationsScreenState extends ConsumerState<AllDonationsScreen> {
                           AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xxxl,
                         ),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+                        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
                         itemBuilder: (ctx, i) => _DonationTile(
                           donation: filtered[i],
                           fmt: _fmt,
@@ -252,33 +256,33 @@ class _SummaryChip extends StatelessWidget {
 }
 
 class _SortButton extends StatelessWidget {
-  final String current;
-  final void Function(String) onChange;
   const _SortButton({required this.current, required this.onChange});
+
+  final DonationSort current;
+  final void Function(DonationSort) onChange;
+
+  static const Map<DonationSort, String> _labels = {
+    DonationSort.newest: 'সর্বশেষ প্রথমে',
+    DonationSort.largest: 'সর্বোচ্চ পরিমাণ প্রথমে',
+  };
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
+    return PopupMenuButton<DonationSort>(
       icon: const Icon(Icons.sort_rounded),
       tooltip: 'সাজান',
       onSelected: onChange,
       itemBuilder: (_) => [
-        PopupMenuItem(
-          value: 'newest',
-          child: Row(children: [
-            if (current == 'newest') const Icon(Icons.check, size: 16, color: AppColors.primary),
-            const SizedBox(width: 8),
-            const Text('সর্বশেষ প্রথমে'),
-          ]),
-        ),
-        PopupMenuItem(
-          value: 'highest',
-          child: Row(children: [
-            if (current == 'highest') const Icon(Icons.check, size: 16, color: AppColors.primary),
-            const SizedBox(width: 8),
-            const Text('সর্বোচ্চ পরিমাণ প্রথমে'),
-          ]),
-        ),
+        for (final entry in _labels.entries)
+          PopupMenuItem(
+            value: entry.key,
+            child: Row(children: [
+              if (current == entry.key)
+                const Icon(Icons.check, size: 16, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(entry.value),
+            ]),
+          ),
       ],
     );
   }

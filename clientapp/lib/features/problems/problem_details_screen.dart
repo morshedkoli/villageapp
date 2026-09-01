@@ -10,7 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/motion.dart';
 import '../../core/widgets/status_badge.dart';
-import '../../data_service.dart';
+import '../../services/problem_service.dart';
 import '../../models.dart';
 
 class ProblemDetailsScreen extends ConsumerWidget {
@@ -296,7 +296,7 @@ class _VotingCard extends ConsumerWidget {
 
   Future<void> _submitVote(BuildContext context, int value) async {
     try {
-      await DataService.instance.voteOnProblem(problem.id, value);
+      await ProblemService.instance.voteOnProblem(problem.id, value);
     } catch (error) {
       if (!context.mounted) {
         return;
@@ -413,5 +413,5 @@ class _MetaRow extends StatelessWidget {
 
 final _myVoteProvider = StreamProvider.family<int?, String>((ref, problemId) {
   ref.watch(currentFirebaseUserProvider);
-  return DataService.instance.myVoteOnProblem(problemId);
+  return ProblemService.instance.myVoteOnProblem(problemId);
 });

@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lottie/lottie.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../data_service.dart';
+import '../../services/auth_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -94,7 +94,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
 
     // Check Firebase Auth state — never skip login for unauthenticated users.
-    final user = DataService.instance.currentUser;
+    final user = AuthService.instance.currentUser;
 
     if (!mounted) return;
     if (user != null) {

@@ -66,27 +66,45 @@ class StatusBadge extends StatelessWidget {
   final double fontSize;
   final EdgeInsetsGeometry? padding;
 
+  /// Overrides the default Bengali label for this badge state.
+  final String? label;
+
   const StatusBadge({
     super.key,
     required this.status,
     this.fontSize = 12,
     this.padding,
+    this.label,
   });
 
   factory StatusBadge.fromString(String text, {double fontSize = 12}) {
+    return StatusBadge(status: badgeStatusFrom(text), fontSize: fontSize);
+  }
+
+  /// Maps both the admin panel's English statuses (`Pending`, `Approved`,
+  /// `Completed`, `Planning`, `Ongoing`, `Rejected`) and the app's Bengali
+  /// labels onto a badge state.
+  static BadgeStatus badgeStatusFrom(String text) {
     final s = text.toLowerCase().replaceAll(' ', '');
-    final status = s.contains('pending') || s.contains('বিচার')
-        ? BadgeStatus.pending
-        : s.contains('progress') || s.contains('প্রক্রিয়')
-            ? BadgeStatus.inProgress
-            : s.contains('approved') || s.contains('অনুমোদ')
-                ? BadgeStatus.approved
-                : s.contains('resolved') || s.contains('সমাধান')
-                    ? BadgeStatus.resolved
-                    : s.contains('rejected') || s.contains('বাতিল')
-                        ? BadgeStatus.rejected
-                        : BadgeStatus.info;
-    return StatusBadge(status: status, fontSize: fontSize);
+    if (s.contains('pending') || s.contains('planning') || s.contains('বিচার') ||
+        s.contains('পরিকল্পনা')) {
+      return BadgeStatus.pending;
+    }
+    if (s.contains('progress') || s.contains('ongoing') ||
+        s.contains('প্রক্রিয়') || s.contains('চলমান')) {
+      return BadgeStatus.inProgress;
+    }
+    if (s.contains('completed') || s.contains('resolved') ||
+        s.contains('সমাধান') || s.contains('সম্পন্ন')) {
+      return BadgeStatus.resolved;
+    }
+    if (s.contains('approved') || s.contains('অনুমোদ')) {
+      return BadgeStatus.approved;
+    }
+    if (s.contains('rejected') || s.contains('বাতিল')) {
+      return BadgeStatus.rejected;
+    }
+    return BadgeStatus.info;
   }
 
   @override
@@ -107,7 +125,7 @@ class StatusBadge extends StatelessWidget {
           Icon(status.icon, size: fontSize + 1, color: status.color),
           const SizedBox(width: 5),
           Text(
-            status.labelBn,
+            label ?? status.labelBn,
             style: AppTypography.caption.copyWith(
               color: status.color,
               fontWeight: FontWeight.w700,
