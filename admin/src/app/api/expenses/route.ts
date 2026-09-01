@@ -1,123 +1,65 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { verifyAdmin } from "@/lib/verify-admin";
+import { withAdminRoute, parseJsonBody, parseQuery } from "@/lib/api-handler";
+import { badRequest, notFound } from "@/lib/api-error";
+import { villageRef } from "@/lib/village";
+import { createExpenseSchema, idQuerySchema } from "@/lib/schemas";
 
-export async function POST(req: NextRequest) {
-  const verified = await verifyAdmin(req);
-  if (!verified.ok) {
-    return NextResponse.json(
-      { error: verified.error },
-      { status: verified.status }
-    );
-  }
+export const POST = withAdminRoute(async (req, { email }) => {
+  const input = await parseJsonBody(req, createExpenseSchema);
+  const db = getAdminDb();
+  const expenseRef = db.collection("fund_transactions").doc();
 
-  const body = (await req.json().catch(() => ({}))) as {
-    project?: string;
-    category?: string;
-    amount?: number;
-    notes?: string;
-  };
-
-  const project = String(body.project ?? "").trim();
-  const category = String(body.category ?? "").trim();
-  const notes = String(body.notes ?? "").trim();
-  const amount = Math.round(Number(body.amount ?? 0));
-
-  if (!project) {
-    return NextResponse.json(
-      { error: "Project or expense title is required" },
-      { status: 400 }
-    );
-  }
-
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return NextResponse.json(
-      { error: "Expense amount must be greater than zero" },
-      { status: 400 }
-    );
-  }
-
-  const adminDb = getAdminDb();
-  const expenseRef = adminDb.collection("fund_transactions").doc();
-  const villageRef = adminDb.collection("villages").doc("main_village");
-
-  await adminDb.runTransaction(async (tx) => {
+  await db.runTransaction(async (tx) => {
     tx.set(expenseRef, {
       type: "expense",
-      amount,
-      reference: project,
-      project,
-      category: category || "Other",
-      notes,
+      amount: input.amount,
+      reference: input.project,
+      project: input.project,
+      category: input.category || "Other",
+      notes: input.notes,
       createdAt: FieldValue.serverTimestamp(),
-      addedBy: verified.email,
+      addedBy: email,
     });
 
     tx.set(
-      villageRef,
-      { totalSpent: FieldValue.increment(amount) },
+      villageRef(db),
+      { totalSpent: FieldValue.increment(input.amount) },
       { merge: true }
     );
   });
 
   return NextResponse.json({ ok: true });
-}
+});
 
-export async function DELETE(req: NextRequest) {
-  const verified = await verifyAdmin(req);
-  if (!verified.ok) {
-    return NextResponse.json(
-      { error: verified.error },
-      { status: verified.status }
-    );
-  }
+export const DELETE = withAdminRoute(async (req) => {
+  const { id } = parseQuery(req, idQuerySchema);
+  const db = getAdminDb();
+  const expenseRef = db.collection("fund_transactions").doc(id);
 
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id")?.trim();
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(expenseRef);
+    if (!snap.exists) {
+      throw notFound("Expense not found");
+    }
 
-  if (!id) {
-    return NextResponse.json(
-      { error: "Expense id is required" },
-      { status: 400 }
-    );
-  }
+    const data = snap.data() as { type?: string; amount?: number } | undefined;
+    if (data?.type !== "expense") {
+      throw badRequest("Transaction is not an expense");
+    }
 
-  const adminDb = getAdminDb();
-  const expenseRef = adminDb.collection("fund_transactions").doc(id);
-  const villageRef = adminDb.collection("villages").doc("main_village");
+    const amount = Math.max(0, Math.round(Number(data.amount ?? 0)));
+    tx.delete(expenseRef);
 
-  try {
-    await adminDb.runTransaction(async (tx) => {
-      const expenseSnap = await tx.get(expenseRef);
-      if (!expenseSnap.exists) {
-        throw new Error("Expense not found");
-      }
-
-      const data = expenseSnap.data() as
-        | { type?: string; amount?: number }
-        | undefined;
-      if (data?.type !== "expense") {
-        throw new Error("Transaction is not an expense");
-      }
-
-      const amount = Math.max(0, Math.round(Number(data.amount ?? 0)));
-      tx.delete(expenseRef);
-
-      if (amount > 0) {
-        tx.set(
-          villageRef,
-          { totalSpent: FieldValue.increment(-amount) },
-          { merge: true }
-        );
-      }
-    });
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Failed to delete expense";
-    const status = message === "Expense not found" ? 404 : 400;
-    return NextResponse.json({ error: message }, { status });
-  }
+    if (amount > 0) {
+      tx.set(
+        villageRef(db),
+        { totalSpent: FieldValue.increment(-amount) },
+        { merge: true }
+      );
+    }
+  });
 
   return NextResponse.json({ ok: true });
-}
+});

@@ -1,3 +1,11 @@
+/**
+ * Fallback admin used before any admin exists in Firestore.
+ *
+ * Firestore security rules cannot read environment variables, so the same
+ * address is hard-coded in `firestore.rules` (`isBootstrapAdmin`). Rules deploy
+ * separately from this app — change both, or an account will be an admin in one
+ * layer and not the other.
+ */
 const DEFAULT_BOOTSTRAP_ADMIN_EMAILS = ["murshedkoli@gmail.com"];
 
 export function normalizeAdminEmail(email: string | null | undefined): string {

@@ -11,6 +11,9 @@ service cloud.firestore {
         : "";
     }
 
+    // Kept in sync by hand with DEFAULT_BOOTSTRAP_ADMIN_EMAILS in
+    // src/lib/admin-access.ts — rules cannot read environment variables, and
+    // they deploy separately from the app. Change both together.
     function isBootstrapAdmin() {
       return request.auth != null && requestEmail() == "murshedkoli@gmail.com";
     }
@@ -27,6 +30,14 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // A vote toggle/switch changes upvotes and/or downvotes by exactly 1
+    // in either direction — never an arbitrary jump.
+    function isValidVoteDelta(field) {
+      return !(field in request.resource.data.diff(resource.data).affectedKeys()) ||
+        (request.resource.data[field] - resource.data[field] == 1) ||
+        (request.resource.data[field] - resource.data[field] == -1);
+    }
+
     match /villages/{doc} {
       allow read: if true;
       allow write: if isAdmin();
@@ -41,7 +52,12 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if true;
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
+      // Owners may edit their own profile, but not admin-controlled
+      // moderation fields like `blocked` or `addedBy`.
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['blocked', 'addedBy'])
+      );
       allow delete: if isAdmin();
     }
 
@@ -92,7 +108,9 @@ service cloud.firestore {
         request.resource.data.reportedBy == request.auth.uid;
       allow update: if isAdmin() || (
         isSignedIn() &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'downvotes'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'downvotes']) &&
+        isValidVoteDelta('upvotes') &&
+        isValidVoteDelta('downvotes')
       );
       allow delete: if isAdmin();
 

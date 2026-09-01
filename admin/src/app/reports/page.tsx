@@ -1,221 +1,172 @@
 "use client";
 
-import React from "react";
+import { useMemo, useState } from "react";
+import { FileBarChart, FolderKanban, Receipt } from "lucide-react";
 import {
-  useVillageOverview,
   useDonations,
+  useExpenses,
   useProjects,
+  useVillageOverview,
 } from "@/lib/hooks";
-import { availableBalance } from "@/lib/models";
-import { formatBDT } from "@/lib/utils";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { csvBlob, downloadBlob } from "@/lib/csv";
+import { buildPdf } from "@/lib/pdf";
+import { formatBDT } from "@/lib/utils";
+import { DateRangeFilter } from "./DateRangeFilter";
+import { FundSummary } from "./FundSummary";
+import { ReportCard } from "./ReportCard";
 import {
-  FileBarChart,
-  Download,
-  Wallet,
-  TrendingDown,
-  Scale,
-  FolderKanban,
-} from "lucide-react";
-
-function escapePdfText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-}
-
-function buildPdf(lines: string[]): Blob {
-  const pageWidth = 595;
-  const pageHeight = 842;
-  const left = 40;
-  const top = 800;
-  const lineHeight = 16;
-  const bottomMargin = 40;
-
-  const pages: string[][] = [[]];
-  let currentPage = 0;
-  let y = top;
-
-  for (const line of lines) {
-    if (y < bottomMargin) {
-      pages.push([]);
-      currentPage += 1;
-      y = top;
-    }
-    pages[currentPage].push(`BT /F1 11 Tf ${left} ${y} Td (${escapePdfText(line)}) Tj ET`);
-    y -= lineHeight;
-  }
-
-  const objects: string[] = [];
-  objects.push("<< /Type /Catalog /Pages 2 0 R >>");
-
-  const pageObjectNumbers: number[] = [];
-  const contentObjectNumbers: number[] = [];
-  const pageKids = pages
-    .map((_, index) => {
-      const pageObjectNumber = 4 + index * 2;
-      pageObjectNumbers.push(pageObjectNumber);
-      contentObjectNumbers.push(pageObjectNumber + 1);
-      return `${pageObjectNumber} 0 R`;
-    })
-    .join(" ");
-
-  objects.push(`<< /Type /Pages /Kids [${pageKids}] /Count ${pages.length} >>`);
-  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
-
-  pages.forEach((pageLines, index) => {
-    const pageObjectNumber = pageObjectNumbers[index];
-    const contentObjectNumber = contentObjectNumbers[index];
-    objects[pageObjectNumber - 1] =
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`;
-
-    const stream = pageLines.join("\n");
-    objects[contentObjectNumber - 1] =
-      `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
-  });
-
-  let pdf = "%PDF-1.4\n";
-  const offsets: number[] = [0];
-
-  objects.forEach((object, index) => {
-    offsets.push(pdf.length);
-    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
-  });
-
-  const xrefStart = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n`;
-  pdf += "0000000000 65535 f \n";
-  offsets.slice(1).forEach((offset) => {
-    pdf += `${offset.toString().padStart(10, "0")} 00000 n \n`;
-  });
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
-
-  return new Blob([pdf], { type: "application/pdf" });
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+  availableMonths,
+  dateSuffix,
+  emptyRange,
+  filterByDate,
+  periodLine,
+  sumBy,
+  type DateRange,
+} from "./report-data";
 
 export default function ReportsPage() {
-  const { data: overview, loading: l1 } = useVillageOverview();
-  const { data: donations, loading: l2 } = useDonations();
-  const { data: projects, loading: l3 } = useProjects();
+  const { data: overview, loading: overviewLoading } = useVillageOverview();
+  const { data: donations, loading: donationsLoading } = useDonations();
+  const { data: projects, loading: projectsLoading } = useProjects();
+  const { data: expenses, loading: expensesLoading } = useExpenses();
 
-  const [fromDate, setFromDate] = React.useState("");
-  const [toDate, setToDate] = React.useState("");
+  const [range, setRange] = useState<DateRange>(emptyRange);
 
-  const availableMonths = React.useMemo(() => {
-    const months = new Set<string>();
-    for (const d of donations) {
-      if (d.createdAt) {
-        months.add(`${d.createdAt.getFullYear()}-${String(d.createdAt.getMonth() + 1).padStart(2, "0")}`);
-      }
-    }
-    for (const p of projects) {
-      if (p.createdAt) {
-        months.add(`${p.createdAt.getFullYear()}-${String(p.createdAt.getMonth() + 1).padStart(2, "0")}`);
-      }
-    }
-    return Array.from(months).sort().reverse();
-  }, [donations, projects]);
+  const months = useMemo(
+    () => availableMonths(donations, projects, expenses),
+    [donations, projects, expenses]
+  );
 
-  if (l1 || l2 || l3) return <LoadingSkeleton />;
+  const loading =
+    overviewLoading || donationsLoading || projectsLoading || expensesLoading;
 
-  const filterByDate = <T extends { createdAt?: Date }>(
-    items: T[]
-  ): T[] => {
-    if (!fromDate && !toDate) return items;
-    return items.filter((item) => {
-      if (!item.createdAt) return true;
-      const d = item.createdAt.getTime();
-      if (fromDate && d < new Date(fromDate).getTime()) return false;
-      if (toDate) {
-        const end = new Date(toDate);
-        end.setHours(23, 59, 59, 999);
-        if (d > end.getTime()) return false;
-      }
-      return true;
-    });
-  };
+  // Expenses store their timestamp as `date`; the shared filter works on
+  // `createdAt`, so they are adapted once here.
+  const datedExpenses = useMemo(
+    () => expenses.map((expense) => ({ ...expense, createdAt: expense.date })),
+    [expenses]
+  );
 
-  const filteredDonations = filterByDate(donations);
-  const filteredProjects = filterByDate(projects);
+  const filteredDonations = filterByDate(
+    donations.filter((donation) => donation.status === "Approved"),
+    range
+  );
+  const filteredProjects = filterByDate(projects, range);
+  const filteredExpenses = filterByDate(datedExpenses, range);
 
-  const totalDonations = filteredDonations.reduce((s, d) => s + d.amount, 0);
-  const totalProjectCost = filteredProjects.reduce((s, p) => s + p.estimatedCost, 0);
-  const totalAllocated = filteredProjects.reduce((s, p) => s + p.allocatedFunds, 0);
+  if (loading) return <LoadingSkeleton />;
 
-  const dateSuffix = (): string => {
-    if (fromDate && toDate) return `-${fromDate}-to-${toDate}`;
-    if (fromDate) return `-from-${fromDate}`;
-    if (toDate) return `-to-${toDate}`;
-    return "";
-  };
+  const totalDonations = sumBy(filteredDonations, (d) => d.amount);
+  const totalExpenses = sumBy(filteredExpenses, (e) => e.amount);
+  const totalProjectCost = sumBy(filteredProjects, (p) => p.estimatedCost);
+  const totalAllocated = sumBy(filteredProjects, (p) => p.allocatedFunds);
 
-  const downloadCSV = () => {
-    const headers = ["Donor Name", "Amount", "Payment Method", "Date"];
-    const rows = filteredDonations.map((d) => [
-      d.donorName,
-      d.amount.toString(),
-      d.paymentMethod,
-      d.createdAt.toLocaleDateString(),
-    ]);
-    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
-    downloadBlob(new Blob([csv], { type: "text/csv" }), `village-donations-report${dateSuffix()}.csv`);
-  };
+  const suffix = dateSuffix(range);
 
-  const downloadProjectCSV = () => {
-    const headers = ["Project", "Status", "Estimated Cost", "Allocated Funds"];
-    const rows = filteredProjects.map((p) => [
-      p.title,
-      p.status,
-      p.estimatedCost.toString(),
-      p.allocatedFunds.toString(),
-    ]);
-    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
-    downloadBlob(new Blob([csv], { type: "text/csv" }), `village-projects-report${dateSuffix()}.csv`);
-  };
-
-  const downloadDonationPDF = () => {
-    const lines = [
-      "Village Donation Report",
-      "",
-      `Period: ${fromDate || "All time"} — ${toDate || "All time"}`,
-      `Total Donations: ${filteredDonations.length}`,
-      `Total Amount: ${formatBDT(totalDonations)}`,
-      "",
-      "Donations",
-      ...filteredDonations.map(
-        (d, index) =>
-          `${index + 1}. ${d.donorName} | ${formatBDT(d.amount)} | ${d.paymentMethod} | ${d.createdAt.toLocaleDateString()}`
+  const downloadDonationCsv = () =>
+    downloadBlob(
+      csvBlob(
+        ["Donor Name", "Amount", "Payment Method", "Date"],
+        filteredDonations.map((donation) => [
+          donation.donorName,
+          donation.amount,
+          donation.paymentMethod,
+          donation.createdAt.toLocaleDateString(),
+        ])
       ),
-    ];
+      `village-donations-report${suffix}.csv`
+    );
 
-    downloadBlob(buildPdf(lines), `village-donations-report${dateSuffix()}.pdf`);
-  };
-
-  const downloadProjectPDF = () => {
-    const lines = [
-      "Village Project Report",
-      "",
-      `Period: ${fromDate || "All time"} — ${toDate || "All time"}`,
-      `Total Projects: ${filteredProjects.length}`,
-      `Total Estimated Cost: ${formatBDT(totalProjectCost)}`,
-      `Total Allocated Funds: ${formatBDT(totalAllocated)}`,
-      "",
-      "Projects",
-      ...filteredProjects.map(
-        (p, index) =>
-          `${index + 1}. ${p.title} | ${p.status} | Estimated ${formatBDT(p.estimatedCost)} | Allocated ${formatBDT(p.allocatedFunds)}`
+  const downloadExpenseCsv = () =>
+    downloadBlob(
+      csvBlob(
+        ["Project / Title", "Category", "Amount", "Notes", "Date"],
+        filteredExpenses.map((expense) => [
+          expense.project,
+          expense.category,
+          expense.amount,
+          expense.notes ?? "",
+          expense.date.toLocaleDateString(),
+        ])
       ),
-    ];
+      `village-expenses-report${suffix}.csv`
+    );
 
-    downloadBlob(buildPdf(lines), `village-projects-report${dateSuffix()}.pdf`);
-  };
+  const downloadProjectCsv = () =>
+    downloadBlob(
+      csvBlob(
+        ["Project", "Status", "Estimated Cost", "Allocated Funds"],
+        filteredProjects.map((project) => [
+          project.title,
+          project.status,
+          project.estimatedCost,
+          project.allocatedFunds,
+        ])
+      ),
+      `village-projects-report${suffix}.csv`
+    );
+
+  const downloadDonationPdf = () =>
+    downloadBlob(
+      buildPdf([
+        "Village Donation Report",
+        "",
+        periodLine(range),
+        `Total Donations: ${filteredDonations.length}`,
+        `Total Amount: ${formatBDT(totalDonations)}`,
+        "",
+        "Donations",
+        ...filteredDonations.map(
+          (donation, index) =>
+            `${index + 1}. ${donation.donorName} | ${formatBDT(
+              donation.amount
+            )} | ${donation.paymentMethod} | ${donation.createdAt.toLocaleDateString()}`
+        ),
+      ]),
+      `village-donations-report${suffix}.pdf`
+    );
+
+  const downloadExpensePdf = () =>
+    downloadBlob(
+      buildPdf([
+        "Village Expense Report",
+        "",
+        periodLine(range),
+        `Total Entries: ${filteredExpenses.length}`,
+        `Total Expenses: ${formatBDT(totalExpenses)}`,
+        "",
+        "Expenses",
+        ...filteredExpenses.map(
+          (expense, index) =>
+            `${index + 1}. ${expense.project} | ${expense.category} | ${formatBDT(
+              expense.amount
+            )} | ${expense.date.toLocaleDateString()}`
+        ),
+      ]),
+      `village-expenses-report${suffix}.pdf`
+    );
+
+  const downloadProjectPdf = () =>
+    downloadBlob(
+      buildPdf([
+        "Village Project Report",
+        "",
+        periodLine(range),
+        `Total Projects: ${filteredProjects.length}`,
+        `Total Estimated Cost: ${formatBDT(totalProjectCost)}`,
+        `Total Allocated Funds: ${formatBDT(totalAllocated)}`,
+        "",
+        "Projects",
+        ...filteredProjects.map(
+          (project, index) =>
+            `${index + 1}. ${project.title} | ${project.status} | Estimated ${formatBDT(
+              project.estimatedCost
+            )} | Allocated ${formatBDT(project.allocatedFunds)}`
+        ),
+      ]),
+      `village-projects-report${suffix}.pdf`
+    );
 
   return (
     <div className="space-y-6">
@@ -226,211 +177,44 @@ export default function ReportsPage() {
         </p>
       </div>
 
-      {/* Fund Summary */}
-      <div className="bg-white rounded-2xl border border-border p-6">
-        <h2 className="text-base font-semibold text-text-primary mb-4">
-          Village Fund Summary
-        </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            {
-              label: "Total Fund",
-              value: formatBDT(overview?.totalFundCollected ?? 0),
-              icon: Wallet,
-              color: "text-primary",
-              bg: "bg-primary-light",
-            },
-            {
-              label: "Total Spent",
-              value: formatBDT(overview?.totalSpent ?? 0),
-              icon: TrendingDown,
-              color: "text-danger",
-              bg: "bg-danger-light",
-            },
-            {
-              label: "Available Balance",
-              value: overview ? formatBDT(availableBalance(overview)) : "৳0",
-              icon: Scale,
-              color: "text-success",
-              bg: "bg-success-light",
-            },
-            {
-              label: "Total Projects",
-              value: projects.length.toString(),
-              icon: FolderKanban,
-              color: "text-secondary",
-              bg: "bg-secondary-light",
-            },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="flex items-center gap-3 p-4 bg-background rounded-xl"
-            >
-              <div
-                className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center`}
-              >
-                <stat.icon className={`w-5 h-5 ${stat.color}`} />
-              </div>
-              <div>
-                <p className="text-xs text-text-muted">{stat.label}</p>
-                <p className="text-lg font-bold text-text-primary">
-                  {stat.value}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <FundSummary overview={overview} projectCount={projects.length} />
 
-      {/* Date Filter */}
-      <div className="bg-white rounded-2xl border border-border p-6">
-        <h2 className="text-base font-semibold text-text-primary mb-4">
-          Filter by Date
-        </h2>
-        <div className="flex items-end gap-4 flex-wrap">
-          <div>
-            <label className="block text-xs text-text-muted mb-1.5">From</label>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-border bg-background text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-text-muted mb-1.5">To</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-border bg-background text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-text-muted mb-1.5">Month</label>
-            <select
-              value=""
-              onChange={(e) => {
-                const val = e.target.value;
-                if (!val) return;
-                const [y, m] = val.split("-");
-                const lastDay = new Date(Number(y), Number(m), 0).getDate();
-                setFromDate(`${val}-01`);
-                setToDate(`${val}-${String(lastDay).padStart(2, "0")}`);
-              }}
-              className="px-3 py-2 rounded-xl border border-border bg-background text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">All months</option>
-              {availableMonths.map((ym) => {
-                const [y, m] = ym.split("-");
-                const label = new Date(Number(y), Number(m) - 1).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                });
-                return (
-                  <option key={ym} value={ym}>
-                    {label}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-          <div className="flex gap-2 items-end">
-            <button
-              onClick={() => {
-                const now = new Date();
-                const y = now.getFullYear();
-                const m = String(now.getMonth() + 1).padStart(2, "0");
-                setFromDate(`${y}-${m}-01`);
-                setToDate(`${y}-${m}-${String(now.getDate()).padStart(2, "0")}`);
-              }}
-              className="px-3 py-2 rounded-xl text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-            >
-              This Month
-            </button>
-            <button
-              onClick={() => { setFromDate(""); setToDate(""); }}
-              className="px-3 py-2 rounded-xl text-xs font-medium bg-background border border-border text-text-muted hover:text-text-primary transition-colors"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-      </div>
+      <DateRangeFilter range={range} months={months} onChange={setRange} />
 
-      {/* Download Reports */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl border border-border p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-success-light flex items-center justify-center">
-              <FileBarChart className="w-5 h-5 text-success" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-text-primary">
-                Donation Report
-              </h3>
-              <p className="text-xs text-text-muted">
-                {filteredDonations.length} of {donations.length} donations &middot; {formatBDT(totalDonations)} total
-              </p>
-            </div>
-          </div>
-          <p className="text-sm text-text-secondary mb-4">
-            Download a complete list of all donations with donor names, amounts,
-            payment methods, and dates.
-          </p>
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              onClick={downloadCSV}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-white hover:bg-primary-dark transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Download CSV
-            </button>
-            <button
-              onClick={downloadDonationPDF}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-background border border-border text-text-primary hover:bg-surface-hover transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Download PDF
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-border p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-secondary-light flex items-center justify-center">
-              <FolderKanban className="w-5 h-5 text-secondary" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-text-primary">
-                Project Report
-              </h3>
-              <p className="text-xs text-text-muted">
-                {filteredProjects.length} of {projects.length} projects &middot; {formatBDT(totalAllocated)} allocated
-              </p>
-            </div>
-          </div>
-          <p className="text-sm text-text-secondary mb-4">
-            Download a summary of all projects with status, estimated costs, and
-            allocated funds.
-          </p>
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              onClick={downloadProjectCSV}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-white hover:bg-primary-dark transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Download CSV
-            </button>
-            <button
-              onClick={downloadProjectPDF}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-background border border-border text-text-primary hover:bg-surface-hover transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Download PDF
-            </button>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <ReportCard
+          icon={FileBarChart}
+          iconClass="bg-success-light text-success"
+          title="Donation Report"
+          subtitle={`${filteredDonations.length} donations · ${formatBDT(
+            totalDonations
+          )}`}
+          description="Download a detailed list of donations with donor names, amounts, payment methods, and dates."
+          onDownloadCsv={downloadDonationCsv}
+          onDownloadPdf={downloadDonationPdf}
+        />
+        <ReportCard
+          icon={Receipt}
+          iconClass="bg-danger-light text-danger"
+          title="Expense Report"
+          subtitle={`${filteredExpenses.length} expenses · ${formatBDT(
+            totalExpenses
+          )}`}
+          description="Download a summary of all village expenses with projects, categories, notes, and timestamps."
+          onDownloadCsv={downloadExpenseCsv}
+          onDownloadPdf={downloadExpensePdf}
+        />
+        <ReportCard
+          icon={FolderKanban}
+          iconClass="bg-secondary-light text-secondary"
+          title="Project Report"
+          subtitle={`${filteredProjects.length} projects · ${formatBDT(
+            totalAllocated
+          )} allocated`}
+          description="Download a summary of all projects with current statuses, estimated costs, and allocated funds."
+          onDownloadCsv={downloadProjectCsv}
+          onDownloadPdf={downloadProjectPdf}
+        />
       </div>
     </div>
   );

@@ -32,6 +32,9 @@ import type {
 
 const VILLAGE_DOC_ID = "main_village";
 
+/** Matches the `limit(200)` used by the other admin listeners. */
+const CITIZEN_PAGE_SIZE = 200;
+
 // --- Village Overview ---
 
 export function subscribeVillageOverview(
@@ -307,10 +310,13 @@ function sortCitizensByName(citizens: Citizen[]): Citizen[] {
 export function subscribeUsers(
   callback: (users: Citizen[]) => void
 ): Unsubscribe {
+  // Bounded like every other listener here: the admin tables filter client
+  // side, so an unbounded stream would grow without limit as the village does.
   const indexedQuery = query(
     collection(db, "users"),
     where("isCitizen", "==", true),
-    orderBy("name")
+    orderBy("name"),
+    limit(CITIZEN_PAGE_SIZE)
   );
 
   let fallbackUnsubscribe: Unsubscribe | null = null;
@@ -332,7 +338,8 @@ export function subscribeUsers(
 
       const fallbackQuery = query(
         collection(db, "users"),
-        where("isCitizen", "==", true)
+        where("isCitizen", "==", true),
+        limit(CITIZEN_PAGE_SIZE)
       );
 
       fallbackUnsubscribe = onSnapshot(

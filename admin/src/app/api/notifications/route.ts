@@ -1,73 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { verifyAdmin } from "@/lib/verify-admin";
+import { withAdminRoute, parseJsonBody, parseQuery } from "@/lib/api-handler";
+import { createNotificationSchema, idQuerySchema } from "@/lib/schemas";
 
-export async function POST(req: NextRequest) {
-  const verified = await verifyAdmin(req);
-  if (!verified.ok) {
-    return NextResponse.json(
-      { error: verified.error },
-      { status: verified.status }
-    );
-  }
-
-  const body = (await req.json().catch(() => ({}))) as {
-    title?: string;
-    body?: string;
-    type?: string;
-  };
-
-  const title = String(body.title ?? "").trim();
-  const message = String(body.body ?? "").trim();
-  const type = String(body.type ?? "donation").trim();
-
-  if (!title) {
-    return NextResponse.json(
-      { error: "Notification title is required" },
-      { status: 400 }
-    );
-  }
-
-  if (!message) {
-    return NextResponse.json(
-      { error: "Notification message is required" },
-      { status: 400 }
-    );
-  }
+export const POST = withAdminRoute(async (req, { email }) => {
+  const input = await parseJsonBody(req, createNotificationSchema);
 
   await getAdminDb().collection("notifications").add({
-    title,
-    body: message,
-    type,
+    title: input.title,
+    body: input.body,
+    type: input.type,
     source: "admin",
     createdAt: FieldValue.serverTimestamp(),
-    addedBy: verified.email,
+    addedBy: email,
   });
 
   return NextResponse.json({ ok: true });
-}
+});
 
-export async function DELETE(req: NextRequest) {
-  const verified = await verifyAdmin(req);
-  if (!verified.ok) {
-    return NextResponse.json(
-      { error: verified.error },
-      { status: verified.status }
-    );
-  }
-
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id")?.trim();
-
-  if (!id) {
-    return NextResponse.json(
-      { error: "Notification id is required" },
-      { status: 400 }
-    );
-  }
-
+export const DELETE = withAdminRoute(async (req) => {
+  const { id } = parseQuery(req, idQuerySchema);
   await getAdminDb().collection("notifications").doc(id).delete();
-
   return NextResponse.json({ ok: true });
-}
+});

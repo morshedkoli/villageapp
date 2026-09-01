@@ -5,6 +5,7 @@ import {
   useVillageOverview,
   useDonations,
   useProjects,
+  useExpenses,
 } from "@/lib/hooks";
 import { availableBalance } from "@/lib/models";
 import { formatBDT } from "@/lib/utils";
@@ -33,6 +34,7 @@ export default function FundPage() {
   const { data: overview, loading: l1 } = useVillageOverview();
   const { data: donations, loading: l2 } = useDonations();
   const { data: projects, loading: l3 } = useProjects();
+  const { data: expenses, loading: l4 } = useExpenses();
 
   const monthlyFlow = useMemo(() => {
     const map = new Map<string, { income: number; expense: number }>();
@@ -46,15 +48,13 @@ export default function FundPage() {
       map.set(key, entry);
     }
 
-    for (const p of projects) {
-      if (p.createdAt) {
-        const key = `${p.createdAt.getFullYear()}-${String(
-          p.createdAt.getMonth() + 1
-        ).padStart(2, "0")}`;
-        const entry = map.get(key) ?? { income: 0, expense: 0 };
-        entry.expense += p.allocatedFunds;
-        map.set(key, entry);
-      }
+    for (const e of expenses) {
+      const key = `${e.date.getFullYear()}-${String(
+        e.date.getMonth() + 1
+      ).padStart(2, "0")}`;
+      const entry = map.get(key) ?? { income: 0, expense: 0 };
+      entry.expense += e.amount;
+      map.set(key, entry);
     }
 
     return Array.from(map.entries())
@@ -66,9 +66,9 @@ export default function FundPage() {
         }),
         ...data,
       }));
-  }, [donations, projects]);
+  }, [donations, expenses]);
 
-  if (l1 || l2 || l3) return <LoadingSkeleton />;
+  if (l1 || l2 || l3 || l4) return <LoadingSkeleton />;
 
   const totalAllocated = projects.reduce((s, p) => s + p.allocatedFunds, 0);
 

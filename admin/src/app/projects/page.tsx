@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { getAuth } from "firebase/auth";
 import { useProjects } from "@/lib/hooks";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FormModal } from "@/components/FormModal";
 import { EmptyState } from "@/components/EmptyState";
 import { formatBDT, formatDate } from "@/lib/utils";
+import { apiClient, errorMessage } from "@/lib/api-client";
 import type { DevelopmentProject } from "@/lib/models";
 import { Plus, Pencil, FolderKanban } from "lucide-react";
 
@@ -60,26 +60,14 @@ export default function ProjectsPage() {
     setSaving(true);
     setError("");
     try {
-      const user = getAuth().currentUser;
-      if (!user) {
-        throw new Error("You must be signed in as an admin");
-      }
-      const token = await user.getIdToken(true);
-      const res = await fetch("/api/projects", {
-        method: editingId ? "PATCH" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(editingId ? { id: editingId, ...form } : form),
-      });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to save project");
+      if (editingId) {
+        await apiClient.patch("/api/projects", { id: editingId, ...form });
+      } else {
+        await apiClient.post("/api/projects", form);
       }
       setFormOpen(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save project");
+      setError(errorMessage(err, "Failed to save project"));
     } finally {
       setSaving(false);
     }

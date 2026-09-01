@@ -1,255 +1,269 @@
-import { NextRequest, NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+import { FieldValue, Transaction } from "firebase-admin/firestore";
+import type {
+  DocumentReference,
+  Firestore,
+} from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { verifyAdmin } from "@/lib/verify-admin";
+import { withAdminRoute, parseJsonBody, parseQuery } from "@/lib/api-handler";
+import { badRequest, notFound } from "@/lib/api-error";
+import { villageRef } from "@/lib/village";
+import {
+  createDonationSchema,
+  donationActionSchema,
+  idQuerySchema,
+} from "@/lib/schemas";
 
-export async function POST(req: NextRequest) {
-  const verified = await verifyAdmin(req);
-  if (!verified.ok) {
-    return NextResponse.json(
-      { error: verified.error },
-      { status: verified.status }
-    );
+interface PaymentTargetDetails {
+  paymentMethod: string;
+  receivedAccountId: string;
+  receivedAccountLabel: string;
+}
+
+/**
+ * Resolves the free-form `paymentTarget` ("cash" or a payment account id) into
+ * the denormalized fields stored on the donation.
+ */
+function resolvePaymentTarget(
+  paymentTarget: string,
+  villageData: Record<string, unknown> | undefined
+): PaymentTargetDetails {
+  if (paymentTarget === "cash") {
+    return {
+      paymentMethod: "Cash",
+      receivedAccountId: "",
+      receivedAccountLabel: "Cash",
+    };
   }
 
-  const body = (await req.json().catch(() => ({}))) as {
-    userId?: string;
-    amount?: number;
-    paymentTarget?: string;
-    senderNumber?: string;
-    transactionId?: string;
-    status?: "Pending" | "Approved";
-  };
-
-  const userId = String(body.userId ?? "").trim();
-  const paymentTarget = String(body.paymentTarget ?? "").trim();
-  const senderNumber = String(body.senderNumber ?? "").trim();
-  const transactionId = String(body.transactionId ?? "").trim();
-  const status = body.status === "Pending" ? "Pending" : "Approved";
-  const amount = Math.round(Number(body.amount ?? 0));
-
-  if (!userId) {
-    return NextResponse.json(
-      { error: "Please select a user for this donation" },
-      { status: 400 }
-    );
-  }
-
-  if (!paymentTarget) {
-    return NextResponse.json(
-      { error: "Please select a receiving account or cash" },
-      { status: 400 }
-    );
-  }
-
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return NextResponse.json(
-      { error: "Donation amount must be greater than zero" },
-      { status: 400 }
-    );
-  }
-
-  const adminDb = getAdminDb();
-  const donorSnap = await adminDb.collection("users").doc(userId).get();
-  if (!donorSnap.exists) {
-    return NextResponse.json(
-      { error: "Selected user does not exist" },
-      { status: 400 }
-    );
-  }
-
-  const donorName = String(donorSnap.data()?.name ?? "").trim();
-  if (!donorName) {
-    return NextResponse.json(
-      { error: "Selected user is missing a name" },
-      { status: 400 }
-    );
-  }
-
-  const donationRef = adminDb.collection("donations").doc();
-  const villageRef = adminDb.collection("villages").doc("main_village");
-  const villageSnap = await adminDb.collection("villages").doc("main_village").get();
-  const paymentAccounts = Array.isArray(villageSnap.data()?.paymentAccounts)
-    ? (villageSnap.data()?.paymentAccounts as Array<Record<string, unknown>>)
+  const accounts = Array.isArray(villageData?.paymentAccounts)
+    ? (villageData.paymentAccounts as Array<Record<string, unknown>>)
     : [];
 
-  let paymentMethod = "Cash";
-  let receivedAccountId = "";
-  let receivedAccountLabel = "Cash";
+  const account = accounts.find(
+    (entry) => String(entry.id ?? "") === paymentTarget
+  );
 
-  if (paymentTarget !== "cash") {
-    const account = paymentAccounts.find(
-      (entry) => String(entry.id ?? "") === paymentTarget
-    );
-
-    if (!account) {
-      return NextResponse.json(
-        { error: "Selected receiving account is no longer available" },
-        { status: 400 }
-      );
-    }
-
-    const accountType = String(account.type ?? "").trim();
-    const accountNumber = String(account.number ?? "").trim();
-    const holderName = String(account.name ?? "").trim();
-
-    paymentMethod = accountType || "Account";
-    receivedAccountId = String(account.id ?? "");
-    receivedAccountLabel = [accountType, accountNumber, holderName]
-      .filter(Boolean)
-      .join(" • ");
+  if (!account) {
+    throw badRequest("Selected receiving account is no longer available");
   }
 
-  await adminDb.runTransaction(async (tx) => {
+  const accountType = String(account.type ?? "").trim();
+  const accountNumber = String(account.number ?? "").trim();
+  const holderName = String(account.name ?? "").trim();
+
+  return {
+    paymentMethod: accountType || "Account",
+    receivedAccountId: String(account.id ?? ""),
+    receivedAccountLabel: [accountType, accountNumber, holderName]
+      .filter(Boolean)
+      .join(" • "),
+  };
+}
+
+/**
+ * Records an approved donation: credits the village fund, writes the matching
+ * ledger row (tagged with `donationId` so it can be reversed) and announces it.
+ */
+function applyApproval(
+  tx: Transaction,
+  db: Firestore,
+  params: {
+    donationId: string;
+    amount: number;
+    donorName: string;
+    adminEmail: string;
+  }
+) {
+  const { donationId, amount, donorName, adminEmail } = params;
+
+  tx.set(
+    villageRef(db),
+    { totalFundCollected: FieldValue.increment(amount) },
+    { merge: true }
+  );
+
+  tx.set(db.collection("fund_transactions").doc(), {
+    type: "donation",
+    donationId,
+    amount,
+    reference: donorName,
+    createdAt: FieldValue.serverTimestamp(),
+    addedBy: adminEmail,
+  });
+
+  tx.set(db.collection("notifications").doc(), {
+    title: "নতুন অনুদান",
+    body: `${donorName} ৳${amount} অনুদান দিয়েছেন`,
+    type: "donation",
+    source: "admin",
+    createdAt: FieldValue.serverTimestamp(),
+  });
+}
+
+/**
+ * Undoes {@link applyApproval}: debits the fund by the donation amount and
+ * removes its ledger rows. Used when an approved donation is rejected or
+ * deleted — without this the village fund total drifts upward permanently.
+ *
+ * Ledger rows are read through the transaction so a concurrent approval or
+ * delete conflicts instead of double-reversing. Rows written before
+ * `donationId` existed carry no link back to the donation, so there is nothing
+ * to delete for them — the fund correction still applies.
+ */
+async function reverseApproval(
+  tx: Transaction,
+  db: Firestore,
+  donationRef: DocumentReference,
+  amount: number
+): Promise<void> {
+  const ledgerRows = await tx.get(
+    // Single-field equality only: Firestore auto-indexes it, so this needs no
+    // composite index deployment.
+    db.collection("fund_transactions").where("donationId", "==", donationRef.id)
+  );
+
+  if (amount > 0) {
+    tx.set(
+      villageRef(db),
+      { totalFundCollected: FieldValue.increment(-amount) },
+      { merge: true }
+    );
+  }
+
+  for (const row of ledgerRows.docs) {
+    tx.delete(row.ref);
+  }
+}
+
+export const POST = withAdminRoute(async (req, { email }) => {
+  const input = await parseJsonBody(req, createDonationSchema);
+  const db = getAdminDb();
+  const donationRef = db.collection("donations").doc();
+  const donorRef = db.collection("users").doc(input.userId);
+
+  await db.runTransaction(async (tx) => {
+    // Both reads happen inside the transaction so a donor deleted (or a
+    // payment account removed) mid-request aborts instead of writing a
+    // donation that points at something that no longer exists.
+    const [donorSnap, villageSnap] = await Promise.all([
+      tx.get(donorRef),
+      tx.get(villageRef(db)),
+    ]);
+
+    if (!donorSnap.exists) {
+      throw badRequest("Selected user does not exist");
+    }
+
+    const donorName = String(donorSnap.data()?.name ?? "").trim();
+    if (!donorName) {
+      throw badRequest("Selected user is missing a name");
+    }
+
+    const target = resolvePaymentTarget(input.paymentTarget, villageSnap.data());
+
     tx.set(donationRef, {
       donorName,
-      amount,
-      paymentMethod,
-      receivedAccountId,
-      receivedAccountLabel,
-      senderNumber,
-      transactionId,
-      userId,
-      status,
+      amount: input.amount,
+      ...target,
+      senderNumber: input.senderNumber,
+      transactionId: input.transactionId,
+      userId: input.userId,
+      status: input.status,
       createdAt: FieldValue.serverTimestamp(),
-      addedBy: verified.email,
+      addedBy: email,
       source: "admin",
     });
 
-    if (status === "Approved") {
-      tx.set(
-        villageRef,
-        { totalFundCollected: FieldValue.increment(amount) },
-        { merge: true }
-      );
-
-      tx.set(adminDb.collection("fund_transactions").doc(), {
-        type: "donation",
-        amount,
-        reference: donorName,
-        createdAt: FieldValue.serverTimestamp(),
-        addedBy: verified.email,
-      });
-
-      tx.set(adminDb.collection("notifications").doc(), {
-        title: "নতুন অনুদান",
-        body: `${donorName} ৳${amount} অনুদান দিয়েছেন`,
-        type: "donation",
-        source: "admin",
-        createdAt: FieldValue.serverTimestamp(),
+    if (input.status === "Approved") {
+      applyApproval(tx, db, {
+        donationId: donationRef.id,
+        amount: input.amount,
+        donorName,
+        adminEmail: email,
       });
     }
   });
 
   return NextResponse.json({ ok: true });
-}
+});
 
-export async function DELETE(req: NextRequest) {
-  const verified = await verifyAdmin(req);
-  if (!verified.ok) {
-    return NextResponse.json(
-      { error: verified.error },
-      { status: verified.status }
-    );
-  }
+export const DELETE = withAdminRoute(async (req) => {
+  const { id } = parseQuery(req, idQuerySchema);
+  const db = getAdminDb();
+  const donationRef = db.collection("donations").doc(id);
 
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id")?.trim();
-
-  if (!id) {
-    return NextResponse.json(
-      { error: "Donation id is required" },
-      { status: 400 }
-    );
-  }
-
-  await getAdminDb().collection("donations").doc(id).delete();
-
-  return NextResponse.json({ ok: true });
-}
-
-export async function PATCH(req: NextRequest) {
-  const verified = await verifyAdmin(req);
-  if (!verified.ok) {
-    return NextResponse.json(
-      { error: verified.error },
-      { status: verified.status }
-    );
-  }
-
-  const body = (await req.json().catch(() => ({}))) as {
-    id?: string;
-    action?: "approve" | "reject";
-  };
-
-  const { id, action } = body;
-
-  if (!id || !action) {
-    return NextResponse.json(
-      { error: "Donation id and action are required" },
-      { status: 400 }
-    );
-  }
-
-  const adminDb = getAdminDb();
-  const donationRef = adminDb.collection("donations").doc(id);
-
-  try {
-    if (action === "approve") {
-      await adminDb.runTransaction(async (tx) => {
-        const donationSnap = await tx.get(donationRef);
-        if (!donationSnap.exists) {
-          throw new Error("Donation not found");
-        }
-
-        const data = donationSnap.data();
-        if (data?.status === "Approved") {
-          return;
-        }
-
-        const amount = Number(data?.amount ?? 0);
-        const donorName = String(data?.donorName ?? "Anonymous");
-        const villageRef = adminDb.collection("villages").doc("main_village");
-
-        tx.update(donationRef, {
-          status: "Approved",
-          approvedBy: verified.email,
-          approvedAt: FieldValue.serverTimestamp(),
-        });
-
-        tx.set(
-          villageRef,
-          { totalFundCollected: FieldValue.increment(amount) },
-          { merge: true }
-        );
-
-        tx.set(adminDb.collection("fund_transactions").doc(), {
-          type: "donation",
-          amount,
-          reference: donorName,
-          createdAt: FieldValue.serverTimestamp(),
-          addedBy: verified.email,
-        });
-
-        tx.set(adminDb.collection("notifications").doc(), {
-          title: "নতুন অনুদান",
-          body: `${donorName} ৳${amount} অনুদান দিয়েছেন`,
-          type: "donation",
-          source: "admin",
-          createdAt: FieldValue.serverTimestamp(),
-        });
-      });
-    } else {
-      await donationRef.update({
-        status: "Rejected",
-        rejectedBy: verified.email,
-        rejectedAt: FieldValue.serverTimestamp(),
-      });
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(donationRef);
+    if (!snap.exists) {
+      throw notFound("Donation not found");
     }
 
-    return NextResponse.json({ ok: true });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Action failed";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
+    const data = snap.data();
+    // Deleting an approved donation must give the money back, or the village
+    // fund total stays inflated with no record explaining it.
+    if (data?.status === "Approved") {
+      await reverseApproval(
+        tx,
+        db,
+        donationRef,
+        Math.max(0, Math.round(Number(data.amount ?? 0)))
+      );
+    }
+
+    tx.delete(donationRef);
+  });
+
+  return NextResponse.json({ ok: true });
+});
+
+export const PATCH = withAdminRoute(async (req, { email }) => {
+  const { id, action } = await parseJsonBody(req, donationActionSchema);
+  const db = getAdminDb();
+  const donationRef = db.collection("donations").doc(id);
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(donationRef);
+    if (!snap.exists) {
+      throw notFound("Donation not found");
+    }
+
+    const data = snap.data() ?? {};
+    const status = String(data.status ?? "Pending");
+    const amount = Math.max(0, Math.round(Number(data.amount ?? 0)));
+    const donorName = String(data.donorName ?? "Anonymous");
+
+    if (action === "approve") {
+      if (status === "Approved") return;
+
+      tx.update(donationRef, {
+        status: "Approved",
+        approvedBy: email,
+        approvedAt: FieldValue.serverTimestamp(),
+      });
+
+      applyApproval(tx, db, {
+        donationId: donationRef.id,
+        amount,
+        donorName,
+        adminEmail: email,
+      });
+      return;
+    }
+
+    if (status === "Rejected") return;
+
+    // Rejecting a donation that was already approved has to unwind the credit.
+    if (status === "Approved") {
+      await reverseApproval(tx, db, donationRef, amount);
+    }
+
+    tx.update(donationRef, {
+      status: "Rejected",
+      rejectedBy: email,
+      rejectedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  return NextResponse.json({ ok: true });
+});

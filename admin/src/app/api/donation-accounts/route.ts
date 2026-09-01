@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { withApiErrorHandling } from "@/lib/api-handler";
+import { notFound } from "@/lib/api-error";
+import { villageRef } from "@/lib/village";
 
 export const dynamic = "force-dynamic";
 
@@ -10,43 +13,47 @@ interface PaymentAccount {
   name?: string;
 }
 
+const TYPE_NAMES: Record<string, string> = {
+  bkash: "bKash",
+  nagad: "Nagad",
+  bank: "Bank",
+  rocket: "Rocket",
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  bkash: "#E2136E",
+  nagad: "#FF6A00",
+  bank: "#1E40AF",
+  rocket: "#8B2FA0",
+};
+
+function getTypeName(type: string): string {
+  return TYPE_NAMES[type.toLowerCase()] ?? type;
+}
+
+function getTypeColor(type: string): string {
+  return TYPE_COLORS[type.toLowerCase()] ?? "#6B7280";
+}
+
 /**
  * GET /api/donation-accounts
- * Returns all active donation payment accounts for Flutter app consumption
+ *
+ * Public endpoint consumed by the Flutter client: the payment accounts the
+ * village can receive donations on, with display metadata resolved server-side.
  */
-export async function GET(_request: NextRequest) {
-  void _request;
-  try {
-    const adminDb = getAdminDb();
+export const GET = withApiErrorHandling(async () => {
+  const villageDoc = await villageRef(getAdminDb()).get();
+  if (!villageDoc.exists) {
+    throw notFound("Village data not found");
+  }
 
-    // Fetch village document containing payment accounts
-    const villageDoc = await adminDb.doc("villages/main_village").get();
+  const raw = villageDoc.data()?.paymentAccounts;
+  const paymentAccounts: PaymentAccount[] = Array.isArray(raw) ? raw : [];
 
-    if (!villageDoc.exists) {
-      return NextResponse.json(
-        { error: "Village data not found" },
-        { status: 404 }
-      );
-    }
-
-    const villageData = villageDoc.data();
-    const paymentAccounts: PaymentAccount[] = Array.isArray(
-      villageData?.paymentAccounts
-    )
-      ? villageData.paymentAccounts
-      : [];
-
-    // Filter only active accounts (with both number and name filled)
-    const activeAccounts = paymentAccounts.filter(
-      (account) =>
-        account.number &&
-        account.number.trim() !== "" &&
-        account.name &&
-        account.name.trim() !== ""
-    );
-
-    // Format accounts for Flutter app
-    const formattedAccounts = activeAccounts.map((account) => ({
+  // Half-configured accounts would render as blank rows in the app.
+  const accounts = paymentAccounts
+    .filter((account) => account.number?.trim() && account.name?.trim())
+    .map((account) => ({
       id: account.id ?? "",
       type: account.type ?? "",
       typeName: getTypeName(account.type ?? ""),
@@ -55,38 +62,9 @@ export async function GET(_request: NextRequest) {
       color: getTypeColor(account.type ?? ""),
     }));
 
-    return NextResponse.json({
-      success: true,
-      accounts: formattedAccounts,
-      count: formattedAccounts.length,
-    });
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Failed to fetch donation accounts";
-    console.error("Error fetching donation accounts:", message);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch donation accounts" },
-      { status: 500 }
-    );
-  }
-}
-
-function getTypeName(type: string): string {
-  const typeMap: Record<string, string> = {
-    bkash: "bKash",
-    nagad: "Nagad",
-    bank: "Bank",
-    rocket: "Rocket",
-  };
-  return typeMap[type.toLowerCase()] || type;
-}
-
-function getTypeColor(type: string): string {
-  const colorMap: Record<string, string> = {
-    bkash: "#E2136E",
-    nagad: "#FF6A00",
-    bank: "#1E40AF",
-    rocket: "#8B2FA0",
-  };
-  return colorMap[type.toLowerCase()] || "#6B7280";
-}
+  return NextResponse.json({
+    success: true,
+    accounts,
+    count: accounts.length,
+  });
+});

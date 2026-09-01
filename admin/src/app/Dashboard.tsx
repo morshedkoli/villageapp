@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useEffect } from "react";
+import Link from "next/link";
 import {
   useVillageOverview,
   useDonations,
@@ -24,8 +25,6 @@ import {
   AlertTriangle,
   Users,
   ArrowUpRight,
-  Smartphone,
-  Download,
 } from "lucide-react";
 import {
   BarChart,
@@ -112,23 +111,13 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Page header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-[26px] font-semibold text-text-primary tracking-tight">
-            Dashboard
-          </h1>
-          <p className="text-sm text-text-secondary mt-1">
-            Overview of your village operations
-          </p>
-        </div>
-        <a
-          href="/apps/al_islah_v2.apk"
-          download
-          className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-primary text-white hover:bg-primary-dark text-xs font-semibold rounded-xl transition-all shadow-sm shadow-primary/10 hover:shadow-md"
-        >
-          <Download className="w-4 h-4" />
-          Download Android App (APK)
-        </a>
+      <div>
+        <h1 className="text-[26px] font-semibold text-text-primary tracking-tight">
+          Dashboard
+        </h1>
+        <p className="text-sm text-text-secondary mt-1">
+          Overview of your village operations
+        </p>
       </div>
 
       {/* Stat cards */}
@@ -292,12 +281,12 @@ export default function Dashboard() {
                 </span>
               )}
             </h3>
-            <a
+            <Link
               href="/donations"
               className="text-xs font-medium text-primary hover:text-primary-dark transition-colors flex items-center gap-1"
             >
               View all <ArrowUpRight className="w-3 h-3" />
-            </a>
+            </Link>
           </div>
           {recentDonations.length === 0 ? (
             <p className="text-sm text-text-muted py-8 text-center">
@@ -332,12 +321,12 @@ export default function Dashboard() {
             <h3 className="text-[15px] font-semibold text-text-primary tracking-tight">
               Recent Activity
             </h3>
-            <a
+            <Link
               href="/notifications"
               className="text-xs font-medium text-primary hover:text-primary-dark transition-colors flex items-center gap-1"
             >
               View all <ArrowUpRight className="w-3 h-3" />
-            </a>
+            </Link>
           </div>
           {recentNotifications.length === 0 ? (
             <p className="text-sm text-text-muted py-8 text-center">

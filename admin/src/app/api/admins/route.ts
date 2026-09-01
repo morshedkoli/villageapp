@@ -1,25 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { verifyAdmin } from "@/lib/verify-admin";
 import {
   getBootstrapAdminEmails,
   isBootstrapAdminEmail,
-  normalizeAdminEmail,
 } from "@/lib/admin-access";
+import { withAdminRoute, parseJsonBody, parseQuery } from "@/lib/api-handler";
+import { forbidden } from "@/lib/api-error";
+import { adminEmailQuerySchema, createAdminSchema } from "@/lib/schemas";
 
-export async function GET(req: NextRequest) {
-  const verified = await verifyAdmin(req);
-  if (!verified.ok) {
-    return NextResponse.json(
-      { error: verified.error },
-      { status: verified.status }
-    );
-  }
-
-  const snap = await getAdminDb()
-    .collection("admins")
-    .orderBy("email")
-    .get();
+export const GET = withAdminRoute(async () => {
+  const snap = await getAdminDb().collection("admins").orderBy("email").get();
 
   const admins = [
     ...getBootstrapAdminEmails().map((email) => ({
@@ -38,38 +29,34 @@ export async function GET(req: NextRequest) {
           addedAt: data.addedAt?.toDate?.()?.toISOString?.() ?? null,
         };
       })
+      // Bootstrap admins are listed above from config; drop stored copies so
+      // the same account never appears twice.
       .filter((admin) => !isBootstrapAdminEmail(admin.email)),
   ];
 
   return NextResponse.json({ admins });
-}
+});
 
-export async function POST(req: NextRequest) {
-  const verified = await verifyAdmin(req);
-  if (!verified.ok) {
-    return NextResponse.json(
-      { error: verified.error },
-      { status: verified.status }
-    );
-  }
-
-  const body = await req.json().catch(() => ({}));
-  const email = normalizeAdminEmail(typeof body.email === "string" ? body.email : "");
-
-  if (!email) {
-    return NextResponse.json({ error: "Email is required" }, { status: 400 });
-  }
-
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailPattern.test(email)) {
-    return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
-  }
+export const POST = withAdminRoute(async (req, { email: addedBy }) => {
+  const { email } = await parseJsonBody(req, createAdminSchema);
 
   await getAdminDb().collection("admins").doc(email).set({
     email,
-    addedBy: verified.email,
-    addedAt: new Date(),
+    addedBy,
+    addedAt: FieldValue.serverTimestamp(),
   });
 
   return NextResponse.json({ ok: true });
-}
+});
+
+export const DELETE = withAdminRoute(async (req) => {
+  const { email } = parseQuery(req, adminEmailQuerySchema);
+
+  if (isBootstrapAdminEmail(email)) {
+    throw forbidden("Bootstrap admin accounts cannot be removed");
+  }
+
+  await getAdminDb().collection("admins").doc(email).delete();
+
+  return NextResponse.json({ ok: true });
+});

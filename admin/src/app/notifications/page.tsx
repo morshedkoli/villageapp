@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { getAuth } from "firebase/auth";
 import { useNotifications } from "@/lib/hooks";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -11,38 +10,9 @@ import { relativeTime } from "@/lib/utils";
 import type { AppNotification } from "@/lib/models";
 import { Megaphone, Plus, Send } from "lucide-react";
 import { sendPushNotification } from "@/lib/push";
+import { apiClient, errorMessage } from "@/lib/api-client";
 
 type NotificationType = AppNotification["type"];
-
-async function callNotificationApi(
-  method: "POST" | "DELETE",
-  payload?: Record<string, unknown>
-) {
-  const user = getAuth().currentUser;
-  if (!user) {
-    throw new Error("You must be signed in as an admin");
-  }
-
-  const token = await user.getIdToken(true);
-  const url =
-    method === "DELETE" && payload?.id
-      ? `/api/notifications?id=${encodeURIComponent(String(payload.id))}`
-      : "/api/notifications";
-
-  const res = await fetch(url, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: method === "POST" ? JSON.stringify(payload ?? {}) : undefined,
-  });
-
-  if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error ?? "Notification request failed");
-  }
-}
 
 export default function NotificationsPage() {
   const { data: notifications, loading } = useNotifications();
@@ -64,7 +34,7 @@ export default function NotificationsPage() {
     setError(null);
     setSuccess(false);
     try {
-      await callNotificationApi("POST", form);
+      await apiClient.post("/api/notifications", form);
       const pushResult = await sendPushNotification({ title: form.title, body: form.body, type: form.type });
       if (!pushResult.success) {
         setError(`Notification saved but push failed: ${pushResult.error}`);
@@ -75,7 +45,7 @@ export default function NotificationsPage() {
       setFormOpen(false);
       setForm({ title: "", body: "", type: "donation" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create notification");
+      setError(errorMessage(err, "Failed to create notification"));
     } finally {
       setSaving(false);
     }
