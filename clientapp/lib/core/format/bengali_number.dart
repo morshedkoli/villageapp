@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 const List<String> _bengaliDigits = [
   '০',
   '১',
@@ -44,3 +46,9 @@ String formatTaka(double? amount) {
   if (amount == null) return '--';
   return '৳${formatBengaliAmount(amount)}';
 }
+
+final NumberFormat _groupedFormat = NumberFormat('#,##0');
+
+/// Money amount with thousands separators and no abbreviation, for screens
+/// that show exact figures rather than the লাখ / হাজার shorthand.
+String formatTakaExact(double amount) => '৳${_groupedFormat.format(amount)}';
