@@ -6,6 +6,7 @@ import 'package:lottie/lottie.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../services/auth_service.dart';
+import '../onboarding/onboarding_pages.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -91,7 +92,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     if (!mounted) return;
 
     final prefs = await SharedPreferences.getInstance();
-    final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
+    final onboardingComplete = prefs.getBool(kOnboardingCompleteKey) ?? false;
 
     // Check Firebase Auth state — never skip login for unauthenticated users.
     final user = AuthService.instance.currentUser;
