@@ -1,5 +1,9 @@
 plugins {
     id("com.android.application")
+    // Declared in settings.gradle.kts but never applied here, so the
+    // `kotlinOptions` block below could not resolve. AGP's built-in Kotlin is
+    // off (android.builtInKotlin=false), so it has to be applied explicitly.
+    id("org.jetbrains.kotlin.android")
     // START: FlutterFire Configuration
     id("com.google.gms.google-services")
     // END: FlutterFire Configuration
@@ -57,7 +61,8 @@ android {
         applicationId = "com.murshedkoli.alislah"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // firebase-auth 23.x requires API 23; Flutter's default is still 21.
+        minSdk = maxOf(flutter.minSdkVersion, 23)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
