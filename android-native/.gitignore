@@ -7,7 +7,7 @@ local.properties
 .idea/
 *.iml
 
-# Firebase configuration (per-developer, mirrors clientapp/.gitignore)
+# Firebase configuration (per-developer, supplied from the Firebase console)
 app/google-services.json
 
 # Signing keys — never commit a release key.

@@ -35,18 +35,30 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## Firestore rules and indexes
+## Firebase backend
 
-`firestore.rules` and `firestore.indexes.json` in this directory are the single
-source of truth for the whole project — the Flutter client, the native Android
-client and this panel all talk to the same database. Deploy them from here:
+This directory owns the whole Firebase side of the project — the native Android
+client and this panel talk to the same database, Storage bucket and functions:
+
+| File | What it covers |
+| --- | --- |
+| `firestore.rules` | Firestore security rules |
+| `firestore.indexes.json` | Composite indexes |
+| `storage.rules` | Cloud Storage rules |
+| `functions/` | Push-notification fanout (Firestore triggers + a callable) |
+
+Deploy all of it, or one piece at a time:
 
 ```bash
+firebase deploy
 firebase deploy --only firestore
+firebase deploy --only storage
+firebase deploy --only functions
 ```
 
-Nothing else in the repo should carry a second copy. `clientapp/` deploys only
-Storage rules and Cloud Functions.
+Nothing else in the repo should carry a second copy of these. They used to live
+partly under `clientapp/`, which was removed when the Flutter client was retired
+in favour of `android-native/`.
 
 Note that `isBootstrapAdmin()` in `firestore.rules` hardcodes the bootstrap
 admin address, because rules cannot read environment variables. It must be kept

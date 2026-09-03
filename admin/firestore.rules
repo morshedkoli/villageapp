@@ -1,6 +1,6 @@
 // Single source of truth for Firestore security across the whole project:
-// this admin panel, clientapp/ (Flutter) and android-native/ (Kotlin) share one
-// database. Deploy with `firebase deploy --only firestore` from this directory.
+// this admin panel and android-native/ (Kotlin) share one database.
+// Deploy with `firebase deploy --only firestore` from this directory.
 // Do not copy this file into another app — a second copy silently downgrades
 // security whichever one is deployed last.
 rules_version = '2';
