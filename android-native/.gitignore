@@ -1,0 +1,15 @@
+# Gradle
+.gradle/
+build/
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# Firebase configuration (per-developer, mirrors clientapp/.gitignore)
+app/google-services.json
+
+# Signing keys — never commit
+*.keystore
+*.jks
