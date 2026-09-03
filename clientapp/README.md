@@ -45,11 +45,17 @@ flutterfire configure
    - Firestore
    - Storage
    - Cloud Functions for push notification fanout. Firebase Blaze plan is required for this.
-5. Deploy rules:
+5. Deploy Storage rules:
 
 ```bash
-firebase deploy --only firestore:rules,storage
+firebase deploy --only storage
 ```
+
+   Firestore rules and indexes are **not** deployed from here. They live in
+   `admin/firestore.rules` and `admin/firestore.indexes.json` — one copy for the
+   whole project, deployed with `firebase deploy --only firestore` from `admin/`.
+   This app used to carry its own weaker copy, which silently downgraded
+   security whenever it happened to be deployed last.
 
 6. Run the app:
 

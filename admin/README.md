@@ -34,3 +34,21 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Firestore rules and indexes
+
+`firestore.rules` and `firestore.indexes.json` in this directory are the single
+source of truth for the whole project — the Flutter client, the native Android
+client and this panel all talk to the same database. Deploy them from here:
+
+```bash
+firebase deploy --only firestore
+```
+
+Nothing else in the repo should carry a second copy. `clientapp/` deploys only
+Storage rules and Cloud Functions.
+
+Note that `isBootstrapAdmin()` in `firestore.rules` hardcodes the bootstrap
+admin address, because rules cannot read environment variables. It must be kept
+in sync by hand with `DEFAULT_BOOTSTRAP_ADMIN_EMAILS` in
+`src/lib/admin-access.ts`.
