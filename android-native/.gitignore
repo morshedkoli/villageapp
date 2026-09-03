@@ -10,6 +10,10 @@ local.properties
 # Firebase configuration (per-developer, mirrors clientapp/.gitignore)
 app/google-services.json
 
-# Signing keys — never commit
+# Signing keys — never commit a release key.
+# app/debug.keystore is the standard CN=Android Debug key (password "android");
+# it is committed so every clone builds with the same SHA1 already registered
+# for Google Sign-In in the Firebase console.
 *.keystore
 *.jks
+!app/debug.keystore
