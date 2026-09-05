@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Smartphone,
   Calendar,
+  AlertTriangle,
 } from "lucide-react";
 
 const SCREENS = [
@@ -96,7 +97,7 @@ export default function LandingPageClient({ apkInfo }: { apkInfo: ApkInfo }) {
               {/* Download CTA */}
               <div className="flex flex-col items-center lg:items-start gap-3">
                 <a
-                  href="/apps/al_islah_v2.apk"
+                  href="/apps/al_islah_v3.apk"
                   download
                   className="inline-flex items-center gap-2.5 px-5 py-3 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-md transition-colors"
                 >
@@ -118,6 +119,18 @@ export default function LandingPageClient({ apkInfo }: { apkInfo: ApkInfo }) {
                     <Calendar className="w-3.5 h-3.5" />
                     আপডেট: {apkInfo.updatedAt}
                   </span>
+                </div>
+
+                {/* Upgrade warning — v3 is a rebuilt app signed with a new key,
+                    so Android cannot install it over v2. */}
+                <div className="flex items-start gap-2 max-w-md rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                  <p className="text-[12px] leading-relaxed text-amber-900">
+                    <strong className="font-semibold">গুরুত্বপূর্ণ:</strong> এটি
+                    নতুন করে তৈরি করা অ্যাপ। আপনার ফোনে আগের ভার্সন (v2.0.0)
+                    ইনস্টল করা থাকলে প্রথমে সেটি আনইনস্টল করুন, তারপর নতুন APK
+                    ইনস্টল করুন। সরাসরি আপডেট করা যাবে না।
+                  </p>
                 </div>
 
                 {/* Install hint */}

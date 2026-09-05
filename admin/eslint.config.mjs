@@ -21,6 +21,9 @@ const eslintConfig = defineConfig([
     ".agents/**",
     "villageapp/**",
     "scripts/**",
+    // Cloud Functions are CommonJS on the Node 20 runtime, not Next.js
+    // sources. They have their own package.json and are deployed separately.
+    "functions/**",
   ]),
 ]);
 
