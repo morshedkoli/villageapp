@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/EmptyState";
 import { relativeTime } from "@/lib/utils";
 import type { AppNotification } from "@/lib/models";
 import { Megaphone, Plus, Send } from "lucide-react";
-import { sendPushNotification } from "@/lib/push";
 import { apiClient, errorMessage } from "@/lib/api-client";
 
 type NotificationType = AppNotification["type"];
@@ -34,14 +33,12 @@ export default function NotificationsPage() {
     setError(null);
     setSuccess(false);
     try {
+      // Creating the doc is the only step. The `onNotificationCreatedSendPush`
+      // Cloud Function fans it out to the broadcast topic — also calling
+      // /api/push here delivered every announcement to devices twice.
       await apiClient.post("/api/notifications", form);
-      const pushResult = await sendPushNotification({ title: form.title, body: form.body, type: form.type });
-      if (!pushResult.success) {
-        setError(`Notification saved but push failed: ${pushResult.error}`);
-      } else {
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
-      }
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
       setFormOpen(false);
       setForm({ title: "", body: "", type: "donation" });
     } catch (err) {

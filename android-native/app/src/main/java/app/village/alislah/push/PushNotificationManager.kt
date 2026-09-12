@@ -1,4 +1,4 @@
-﻿package app.village.alislah.push
+package app.village.alislah.push
 
 import android.app.ActivityManager
 import android.app.NotificationChannel
@@ -36,6 +36,7 @@ object PushNotificationManager {
     const val CHANNEL_DONATIONS = "village_donations"
     const val CHANNEL_PROBLEMS = "village_problems"
     const val CHANNEL_PROJECTS = "village_projects"
+    const val CHANNEL_DEFAULT = "default"
 
     // Deduplication cache: stores message key -> timestamp (milliseconds)
     private val processedMessages = ConcurrentHashMap<String, Long>()
@@ -62,6 +63,20 @@ object PushNotificationManager {
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "সকল গ্রামবাসীর সাধারণ ও জরুরি ঘোষণা"
+                enableLights(true)
+                lightColor = Color.GREEN
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 250, 150, 250)
+                setSound(defaultSoundUri, audioAttributes)
+            }
+
+            // Fallback for background pushes naming channel 'default'
+            val defaultChannel = NotificationChannel(
+                CHANNEL_DEFAULT,
+                "সাধারণ বিজ্ঞপ্তি",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "সাধারণ বিজ্ঞপ্তি ও বার্তা"
                 enableLights(true)
                 lightColor = Color.GREEN
                 enableVibration(true)
@@ -106,7 +121,7 @@ object PushNotificationManager {
             }
 
             notificationManager.createNotificationChannels(
-                listOf(broadcastChannel, donationsChannel, problemsChannel, projectsChannel)
+                listOf(broadcastChannel, defaultChannel, donationsChannel, problemsChannel, projectsChannel)
             )
         }
     }
@@ -138,12 +153,13 @@ object PushNotificationManager {
                 val token = FirebaseMessaging.getInstance().token.await()
                 if (token.isNotBlank()) {
                     val userDoc = FirebaseFirestore.getInstance().collection("users").document(user.uid)
-                    userDoc.update(
+                    userDoc.set(
                         mapOf(
                             "fcmToken" to token,
                             "fcmTokens" to FieldValue.arrayUnion(token),
                             "lastTokenUpdate" to FieldValue.serverTimestamp()
-                        )
+                        ),
+                        com.google.firebase.firestore.SetOptions.merge()
                     ).await()
                     Log.d(TAG, "FCM token synced for user: ${user.uid}")
                 }
@@ -198,6 +214,8 @@ object PushNotificationManager {
 
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("title", title)
+            putExtra("body", body)
             for ((k, v) in data) {
                 putExtra(k, v)
             }
@@ -214,6 +232,7 @@ object PushNotificationManager {
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
+            .setColor(0xFF16A34A.toInt())
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

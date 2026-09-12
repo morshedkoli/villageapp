@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.home
+package app.village.alislah.feature.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -37,12 +36,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import app.village.alislah.components.EmptyState
 import app.village.alislah.components.AlIslahCard
 import app.village.alislah.components.AlIslahTextField
 import app.village.alislah.components.AlIslahTopBar
+import app.village.alislah.components.EmptyState
 import app.village.alislah.core.Formatters
 import app.village.alislah.model.FundTransaction
 import app.village.alislah.theme.AlIslahTheme
@@ -57,12 +57,35 @@ fun AllExpensesScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
 
+    val distinctCategories = remember(uiState.allExpenses) {
+        val baseCategories = listOf("All", "রাস্তাঘাট", "কালভার্ট", "মসজিদ/মাদ্রাসা", "ত্রাণ ও সাহায্য", "চিকিৎসা", "অন্যান্য")
+        val fromBackend = uiState.allExpenses
+            .map { it.category.trim() }
+            .filter { it.isNotBlank() && it !in baseCategories && !it.equals("Other", ignoreCase = true) }
+            .distinct()
+        baseCategories + fromBackend
+    }
+
     val filteredExpenses = uiState.allExpenses.filter { expense ->
-        val matchesSearch = expense.project.contains(searchQuery, ignoreCase = true) ||
+        val matchesSearch = searchQuery.isBlank() ||
+                expense.project.contains(searchQuery, ignoreCase = true) ||
                 expense.category.contains(searchQuery, ignoreCase = true) ||
                 expense.notes.contains(searchQuery, ignoreCase = true)
 
-        val matchesCategory = if (selectedCategory == "All") true else expense.category.equals(selectedCategory, ignoreCase = true)
+        val matchesCategory = if (selectedCategory == "All") {
+            true
+        } else {
+            expense.category.equals(selectedCategory, ignoreCase = true) ||
+                    when (selectedCategory) {
+                        "অন্যান্য" -> expense.category.isBlank() || expense.category.equals("Other", ignoreCase = true)
+                        "রাস্তাঘাট" -> expense.category.contains("road", ignoreCase = true) || expense.category.contains("রাস্তা", ignoreCase = true)
+                        "কালভার্ট" -> expense.category.contains("bridge", ignoreCase = true) || expense.category.contains("culvert", ignoreCase = true) || expense.category.contains("কালভার্ট", ignoreCase = true)
+                        "মসজিদ/মাদ্রাসা" -> expense.category.contains("mosque", ignoreCase = true) || expense.category.contains("মসজিদ", ignoreCase = true) || expense.category.contains("মাদ্রাসা", ignoreCase = true)
+                        "ত্রাণ ও সাহায্য" -> expense.category.contains("relief", ignoreCase = true) || expense.category.contains("aid", ignoreCase = true) || expense.category.contains("ত্রাণ", ignoreCase = true)
+                        "চিকিৎসা" -> expense.category.contains("medical", ignoreCase = true) || expense.category.contains("health", ignoreCase = true) || expense.category.contains("চিকিৎসা", ignoreCase = true)
+                        else -> false
+                    }
+        }
 
         matchesSearch && matchesCategory
     }
@@ -73,11 +96,10 @@ fun AllExpensesScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         AlIslahTopBar(
             title = "গ্রামের ব্যয় ও খরচের খতিয়ান",
-            subtitle = "মোট ব্যয়: ${Formatters.formatBDT(totalSpent)}",
+            subtitle = if (filteredExpenses.isNotEmpty()) "মোট ব্যয়: ${Formatters.formatBDT(totalSpent)} (${filteredExpenses.size}টি হিসাব)" else "মোট ব্যয়: ${Formatters.formatBDT(totalSpent)}",
             showBackButton = true,
             onBackClick = onBackClick
         )
@@ -102,8 +124,7 @@ fun AllExpensesScreen(
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val categories = listOf("All", "রাস্তাঘাট", "কালভার্ট", "মসজিদ/মাদ্রাসা", "ত্রাণ ও সাহায্য", "চিকিৎসা", "অন্যান্য")
-                items(categories) { cat ->
+                items(distinctCategories) { cat ->
                     val isSelected = selectedCategory == cat
                     val label = if (cat == "All") "সকল খাত" else cat
                     FilterChip(
@@ -122,7 +143,7 @@ fun AllExpensesScreen(
         if (filteredExpenses.isEmpty()) {
             EmptyState(
                 title = "কোনো ব্যয়ের হিসাব পাওয়া যায়নি",
-                description = "আপনার অনুসন্ধান বা নির্বাচিত খাতের জন্য কোনো ব্যয়ের রেকর্ড নেই।"
+                description = if (searchQuery.isNotBlank()) "অনুসন্ধানের সাথে মেলে এমন কোনো ব্যয়ের হিসাব নেই।" else "বর্তমানে কোনো ব্যয়ের রেকর্ড যুক্ত করা হয়নি।"
             )
         } else {
             LazyColumn(
@@ -130,7 +151,7 @@ fun AllExpensesScreen(
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(filteredExpenses) { expense ->
+                items(filteredExpenses, key = { it.id.ifBlank { it.createdAt.time.toString() + it.amount } }) { expense ->
                     ExpenseDetailCard(expense = expense)
                 }
             }
@@ -147,11 +168,14 @@ private fun ExpenseDetailCard(expense: FundTransaction) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(12.dp))
                             .background(Color(0xFFEF4444).copy(alpha = 0.12f)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -163,26 +187,34 @@ private fun ExpenseDetailCard(expense: FundTransaction) {
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = expense.project,
+                            text = expense.project.ifBlank { "সাধারণ গ্রাম উন্নয়ন" },
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = AlIslahTheme.customColors.textPrimary
+                            color = AlIslahTheme.customColors.textPrimary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "${expense.category} • ${Formatters.formatDateTime(expense.createdAt)}",
+                            text = "${expense.category.ifBlank { "অন্যান্য" }} • ${Formatters.formatDateTime(expense.createdAt)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = AlIslahTheme.customColors.textTertiary
+                            color = AlIslahTheme.customColors.textTertiary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.width(10.dp))
 
                 Text(
                     text = "- ${Formatters.formatBDT(expense.amount)}",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFEF4444)
-                    )
+                    ),
+                    maxLines = 1
                 )
             }
 
@@ -193,7 +225,7 @@ private fun ExpenseDetailCard(expense: FundTransaction) {
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
                         .background(AlIslahTheme.customColors.cardBorder.copy(alpha = 0.3f))
-                        .padding(8.dp)
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = "বিবরণ: ${expense.notes}",

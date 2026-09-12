@@ -1,4 +1,4 @@
-﻿package app.village.alislah.components
+package app.village.alislah.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -86,5 +86,27 @@ fun EmptyState(
                 height = 44.dp
             )
         }
+    }
+}
+
+@Composable
+fun EmptyInlineState(
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .clip(app.village.alislah.theme.CardShape)
+            .background(AlIslahTheme.customColors.cardBackground)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = AlIslahTheme.customColors.textTertiary
+        )
     }
 }

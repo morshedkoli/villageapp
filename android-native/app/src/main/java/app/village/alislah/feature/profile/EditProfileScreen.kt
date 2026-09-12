@@ -1,7 +1,8 @@
-﻿package app.village.alislah.feature.profile
+package app.village.alislah.feature.profile
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,8 +11,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Badge
@@ -22,6 +25,11 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,7 +47,9 @@ import app.village.alislah.components.AlIslahTopBar
 import app.village.alislah.data.AuthRepository
 import app.village.alislah.di.ServiceLocator
 import app.village.alislah.model.UserProfile
+import app.village.alislah.theme.AlIslahPrimary
 import app.village.alislah.theme.AlIslahTheme
+import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
 @Composable
@@ -58,12 +68,14 @@ fun EditProfileScreen(
     var bloodGroup by remember { mutableStateOf("") }
     var nidNumber by remember { mutableStateOf("") }
     var photoUrl by remember { mutableStateOf("") }
+    var loadedProfile by remember { mutableStateOf<UserProfile?>(null) }
     var isSaving by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentUid) {
         if (currentUid != null) {
             authRepository.getUserProfileFlow(currentUid).collect { profile ->
                 if (profile != null) {
+                    loadedProfile = profile
                     name = profile.name
                     profession = profile.profession
                     village = profile.village
@@ -80,7 +92,6 @@ fun EditProfileScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding()
     ) {
@@ -94,8 +105,50 @@ fun EditProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp)
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
+            // Avatar Header Preview
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(84.dp)
+                        .clip(CircleShape)
+                        .background(AlIslahPrimary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (photoUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = photoUrl,
+                            contentDescription = "Profile Photo",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = if (name.isNotBlank()) name.take(1) else "গ",
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = AlIslahPrimary
+                            )
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = "ব্যক্তিগত তথ্য",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = AlIslahPrimary
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+
             AlIslahTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -131,6 +184,30 @@ fun EditProfileScreen(
             Spacer(modifier = Modifier.height(14.dp))
 
             AlIslahTextField(
+                value = bloodGroup,
+                onValueChange = { bloodGroup = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = "রক্তের গ্রুপ",
+                placeholder = "যেমন: A+, B+, O+, AB+",
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.InvertColors,
+                        contentDescription = null,
+                        tint = AlIslahTheme.customColors.textSecondary
+                    )
+                }
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                text = "ঠিকানা ও গ্রাম",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = AlIslahPrimary
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+
+            AlIslahTextField(
                 value = village,
                 onValueChange = { village = it },
                 modifier = Modifier.fillMaxWidth(),
@@ -162,24 +239,14 @@ fun EditProfileScreen(
                 }
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            AlIslahTextField(
-                value = bloodGroup,
-                onValueChange = { bloodGroup = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = "রক্তের গ্রুপ",
-                placeholder = "যেমন: A+, B+, O+, AB+",
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.InvertColors,
-                        contentDescription = null,
-                        tint = AlIslahTheme.customColors.textSecondary
-                    )
-                }
+            Text(
+                text = "পরিচয় ও ছবি",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = AlIslahPrimary
             )
-
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             AlIslahTextField(
                 value = nidNumber,
@@ -224,8 +291,8 @@ fun EditProfileScreen(
                     }
                     isSaving = true
                     coroutineScope.launch {
-                        val updatedProfile = UserProfile(
-                            id = currentUid ?: "",
+                        val baseProfile = loadedProfile ?: UserProfile(id = currentUid ?: "")
+                        val updatedProfile = baseProfile.copy(
                             name = name.trim(),
                             profession = profession.trim(),
                             village = village.trim(),

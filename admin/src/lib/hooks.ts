@@ -8,6 +8,7 @@ import {
   subscribeProjects,
   subscribeProblems,
   subscribeUsers,
+  subscribeLeaders,
   subscribeNotifications,
   subscribeUserNotifications,
   subscribePaymentAccounts,
@@ -19,6 +20,7 @@ import type {
   ProblemReport,
   Citizen,
   AppNotification,
+  Leader,
   PaymentAccounts,
   ExpenseEntry,
 } from "./models";
@@ -90,6 +92,21 @@ export function useUsers() {
   useEffect(() => {
     const unsub = subscribeUsers((users) => {
       setData(users);
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  return { data, loading };
+}
+
+export function useLeaders() {
+  const [data, setData] = useState<Leader[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = subscribeLeaders((leaders) => {
+      setData(leaders);
       setLoading(false);
     });
     return unsub;

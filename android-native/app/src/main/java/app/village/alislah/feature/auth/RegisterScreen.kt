@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.auth
+package app.village.alislah.feature.auth
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -118,7 +118,6 @@ fun RegisterScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding()
     ) {

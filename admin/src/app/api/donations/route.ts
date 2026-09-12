@@ -62,8 +62,9 @@ function resolvePaymentTarget(
 }
 
 /**
- * Records an approved donation: credits the village fund, writes the matching
- * ledger row (tagged with `donationId` so it can be reversed) and announces it.
+ * Records an approved donation: credits the village fund and writes the
+ * matching ledger row (tagged with `donationId` so it can be reversed).
+ * Announcing it is the Cloud Functions layer's job.
  */
 function applyApproval(
   tx: Transaction,
@@ -92,13 +93,10 @@ function applyApproval(
     addedBy: adminEmail,
   });
 
-  tx.set(db.collection("notifications").doc(), {
-    title: "নতুন অনুদান",
-    body: `${donorName} ৳${amount} অনুদান দিয়েছেন`,
-    type: "donation",
-    source: "admin",
-    createdAt: FieldValue.serverTimestamp(),
-  });
+  // No notification doc is written here on purpose: the
+  // `onDonationApprovedNotifyAll` Cloud Function already announces the status
+  // change. Writing one here too produced two feed entries and two pushes for
+  // a single approval.
 }
 
 /**

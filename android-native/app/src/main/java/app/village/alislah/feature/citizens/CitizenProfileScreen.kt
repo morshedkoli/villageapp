@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.citizens
+package app.village.alislah.feature.citizens
 
 import android.content.Intent
 import android.net.Uri
@@ -71,7 +71,6 @@ fun CitizenProfileScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         AlIslahTopBar(
             title = "নাগরিক প্রোফাইল",

@@ -35,8 +35,8 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // A vote toggle/switch changes upvotes and/or downvotes by exactly 1
-    // in either direction — never an arbitrary jump.
+    // A vote toggle/switch changes the counter by exactly 1 in either
+    // direction — never an arbitrary jump.
     function isValidVoteDelta(field) {
       return !(field in request.resource.data.diff(resource.data).affectedKeys()) ||
         (request.resource.data[field] - resource.data[field] == 1) ||
@@ -57,11 +57,13 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if true;
       allow create: if isOwner(userId);
-      // Owners may edit their own profile, but not admin-controlled
-      // moderation fields like `blocked` or `addedBy`.
+      // Owners may edit their own profile, but not admin-controlled fields:
+      // `blocked`/`addedBy` are moderation state, and `isAdmin` would be a
+      // self-granted privilege escalation.
       allow update: if isAdmin() || (
         isOwner(userId) &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['blocked', 'addedBy'])
+        !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['blocked', 'addedBy', 'isAdmin'])
       );
       allow delete: if isAdmin();
     }
@@ -113,9 +115,8 @@ service cloud.firestore {
         request.resource.data.reportedBy == request.auth.uid;
       allow update: if isAdmin() || (
         isSignedIn() &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes', 'downvotes']) &&
-        isValidVoteDelta('upvotes') &&
-        isValidVoteDelta('downvotes')
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotesCount']) &&
+        isValidVoteDelta('upvotesCount')
       );
       allow delete: if isAdmin();
 
@@ -124,6 +125,12 @@ service cloud.firestore {
         allow read: if true;
         allow create, update, delete: if isSignedIn() && voterId == request.auth.uid;
       }
+    }
+
+    // Village committee members shown on the app's Leaders screen.
+    match /leaders/{leaderId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
     }
 
     // Application configuration (e.g., payment methods)

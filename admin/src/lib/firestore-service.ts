@@ -7,16 +7,14 @@ import {
   orderBy,
   limit,
   addDoc,
-  updateDoc,
   deleteDoc,
+  serverTimestamp,
+  updateDoc,
   setDoc,
   getDocs,
-  serverTimestamp,
-  increment,
   where,
   Unsubscribe,
   DocumentData,
-  runTransaction,
 } from "firebase/firestore";
 import { toDate, toNumber } from "./converters";
 import type {
@@ -26,6 +24,7 @@ import type {
   DevelopmentProject,
   Citizen,
   AppNotification,
+  Leader,
   PaymentAccounts,
   ExpenseEntry,
 } from "./models";
@@ -53,14 +52,6 @@ export function subscribeVillageOverview(
     },
     (error) => { console.warn("Village listener error:", error.message); }
   );
-}
-
-export async function updateVillageOverview(
-  data: Partial<VillageOverview>
-): Promise<void> {
-  await setDoc(doc(db, "villages", VILLAGE_DOC_ID), data as DocumentData, {
-    merge: true,
-  });
 }
 
 // --- Payment Accounts ---
@@ -110,16 +101,6 @@ export function subscribePaymentAccounts(
   );
 }
 
-export async function updatePaymentAccounts(
-  accounts: PaymentAccounts
-): Promise<void> {
-  await setDoc(
-    doc(db, "villages", VILLAGE_DOC_ID),
-    { paymentAccounts: accounts },
-    { merge: true }
-  );
-}
-
 // --- Donations ---
 
 function mapDonation(id: string, d: DocumentData): Donation {
@@ -153,36 +134,10 @@ export function subscribeDonations(
   );
 }
 
-export async function deleteDonation(id: string): Promise<void> {
-  await deleteDoc(doc(db, "donations", id));
-}
-
-export async function approveDonation(id: string): Promise<void> {
-  const donationRef = doc(db, "donations", id);
-  const villageRef = doc(db, "villages", VILLAGE_DOC_ID);
-
-  await runTransaction(db, async (tx) => {
-    const donationSnap = await tx.get(donationRef);
-    const data = donationSnap.data();
-    if (!data) throw new Error("Donation not found");
-
-    const amount = toNumber(data.amount);
-    const donorName = (data.donorName as string) ?? "Anonymous";
-
-    tx.update(donationRef, { status: "Approved" });
-    tx.set(villageRef, { totalFundCollected: increment(amount) }, { merge: true });
-    tx.set(doc(collection(db, "fund_transactions")), {
-      type: "donation",
-      amount,
-      reference: donorName,
-      createdAt: serverTimestamp(),
-    });
-  });
-}
-
-export async function rejectDonation(id: string): Promise<void> {
-  await updateDoc(doc(db, "donations", id), { status: "Rejected" });
-}
+// Donation approval, rejection and deletion live in /api/donations only.
+// The client-side versions that used to sit here credited the fund without
+// tagging the ledger row with `donationId`, so the API route's reversal could
+// not find them and a deleted approval left the total inflated forever.
 
 // --- Projects ---
 
@@ -216,30 +171,7 @@ export function subscribeProjects(
   );
 }
 
-export async function createProject(
-  data: Omit<DevelopmentProject, "id">
-): Promise<void> {
-  const rest = { ...data };
-  delete (rest as Partial<DevelopmentProject>).createdAt;
-  await addDoc(collection(db, "projects"), {
-    ...rest,
-    createdAt: serverTimestamp(),
-  });
-}
-
-export async function updateProject(
-  id: string,
-  data: Partial<DevelopmentProject>
-): Promise<void> {
-  const rest = { ...data };
-  delete (rest as Partial<DevelopmentProject>).id;
-  delete (rest as Partial<DevelopmentProject>).createdAt;
-  await updateDoc(doc(db, "projects", id), rest as DocumentData);
-}
-
-export async function deleteProject(id: string): Promise<void> {
-  await deleteDoc(doc(db, "projects", id));
-}
+// Project writes live in /api/projects only.
 
 // --- Problems ---
 
@@ -272,16 +204,7 @@ export function subscribeProblems(
   );
 }
 
-export async function updateProblemStatus(
-  id: string,
-  status: ProblemReport["status"]
-): Promise<void> {
-  await updateDoc(doc(db, "problems", id), { status });
-}
-
-export async function deleteProblem(id: string): Promise<void> {
-  await deleteDoc(doc(db, "problems", id));
-}
+// Problem writes live in /api/problems only.
 
 // --- Users / Citizens ---
 
@@ -398,8 +321,11 @@ function sortExpensesByDate(expenses: ExpenseEntry[]): ExpenseEntry[] {
 export function subscribeExpenses(
   callback: (expenses: ExpenseEntry[]) => void
 ): Unsubscribe {
+  // Filter server side: with a client-side filter a burst of donation rows
+  // could fill the whole 200-document page and empty the expenses table.
   const q = query(
     collection(db, "fund_transactions"),
+    where("type", "==", "expense"),
     orderBy("createdAt", "desc"),
     limit(200)
   );
@@ -409,9 +335,9 @@ export function subscribeExpenses(
     (snap) => {
       callback(
         sortExpensesByDate(
-          snap.docs
-            .filter((expenseDoc) => expenseDoc.data()?.type === "expense")
-            .map((expenseDoc) => mapExpense(expenseDoc.id, expenseDoc.data()))
+          snap.docs.map((expenseDoc) =>
+            mapExpense(expenseDoc.id, expenseDoc.data())
+          )
         )
       );
     },
@@ -421,38 +347,45 @@ export function subscribeExpenses(
   );
 }
 
-export async function createExpense(data: {
-  project: string;
-  category: string;
-  amount: number;
-  notes?: string;
-}): Promise<void> {
-  const amount = Math.round(data.amount);
-  if (amount <= 0) {
-    throw new Error("Expense amount must be greater than zero");
-  }
+// Expense writes live in /api/expenses only.
 
-  const project = data.project.trim();
-  const category = data.category.trim();
-  const notes = data.notes?.trim() ?? "";
+// --- Leaders (village committee) ---
 
-  await runTransaction(db, async (tx) => {
-    tx.set(doc(collection(db, "fund_transactions")), {
-      type: "expense",
-      amount,
-      reference: project || "General",
-      project: project || "General",
-      category: category || "Other",
-      notes,
-      createdAt: serverTimestamp(),
-    });
+function mapLeader(id: string, d: DocumentData): Leader {
+  return {
+    id,
+    name: (d.name as string) ?? "",
+    designation: (d.designation as string) ?? (d.role as string) ?? "",
+    phone: (d.phone as string) ?? "",
+    email: (d.email as string) ?? "",
+    photoUrl: (d.photoUrl as string) ?? "",
+    description: (d.description as string) ?? "",
+    priority: toNumber(d.priority),
+  };
+}
 
-    tx.set(
-      doc(db, "villages", VILLAGE_DOC_ID),
-      { totalSpent: increment(amount) },
-      { merge: true }
-    );
-  });
+export function subscribeLeaders(
+  callback: (leaders: Leader[]) => void
+): Unsubscribe {
+  // Ordered client side: `priority` is missing on older rows, and an
+  // orderBy would drop those documents from the result entirely.
+  const q = query(collection(db, "leaders"), limit(50));
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      callback(
+        snap.docs
+          .map((leaderDoc) => mapLeader(leaderDoc.id, leaderDoc.data()))
+          .sort(
+            (a, b) => a.priority - b.priority || a.name.localeCompare(b.name)
+          )
+      );
+    },
+    (error) => {
+      console.warn("Leaders listener error:", error.message);
+    }
+  );
 }
 
 // --- Notifications ---

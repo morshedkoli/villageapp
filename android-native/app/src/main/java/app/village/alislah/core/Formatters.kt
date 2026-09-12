@@ -1,4 +1,4 @@
-﻿package app.village.alislah.core
+package app.village.alislah.core
 
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
@@ -44,6 +44,14 @@ object Formatters {
             days < 7 -> "$days দিন আগে"
             else -> formatDate(date)
         }
+    }
+
+    fun formatNumber(number: Int): String {
+        return toBanglaDigits(number.toString())
+    }
+
+    fun formatNumber(number: Long): String {
+        return toBanglaDigits(number.toString())
     }
 
     fun toBanglaDigits(input: String): String {

@@ -12,7 +12,10 @@ export const POST = withAdminRoute(async (req) => {
     data: { type, title, body },
     android: {
       priority: "high",
-      notification: { channelId: "default" },
+      // Must name a channel the Android client actually creates
+      // (PushNotificationManager.CHANNEL_BROADCAST). A channel id the device
+      // does not have silently drops the notification on API 26+.
+      notification: { channelId: "village_broadcast" },
     },
   });
 

@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.donation
+package app.village.alislah.feature.donation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,9 +20,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -33,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,8 +50,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.village.alislah.components.ButtonVariant
 import app.village.alislah.components.EmptyState
+import app.village.alislah.components.EmptyInlineState
 import app.village.alislah.components.AlIslahButton
 import app.village.alislah.components.AlIslahCard
+import app.village.alislah.components.AlIslahTextField
 import app.village.alislah.components.AlIslahTopBar
 import app.village.alislah.components.StatusChip
 import app.village.alislah.core.Formatters
@@ -56,38 +63,74 @@ import app.village.alislah.theme.AlIslahPrimary
 import app.village.alislah.theme.AlIslahTheme
 import app.village.alislah.theme.PrimaryGradient
 
+import androidx.compose.ui.text.style.TextOverflow
+
 @Composable
 fun DonationScreen(
     onNavigateToCheckout: () -> Unit,
+    onNavigateToAllExpenses: () -> Unit = {},
+    onNavigateToMyDonations: () -> Unit = {},
     viewModel: DonationViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    var searchQuery by remember { mutableStateOf("") }
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabTitles = listOf("সকল অনুদান", "অনুমোদিত", "অপেক্ষমাণ")
 
-    val filteredDonations = when (selectedTabIndex) {
-        1 -> uiState.donations.filter { it.isApproved }
-        2 -> uiState.donations.filter { it.isPending }
-        else -> uiState.donations
+    val filteredDonations = uiState.donations.filter { donation ->
+        val matchesSearch = searchQuery.isBlank() ||
+                donation.donorName.contains(searchQuery, ignoreCase = true) ||
+                donation.transactionId.contains(searchQuery, ignoreCase = true) ||
+                donation.senderNumber.contains(searchQuery, ignoreCase = true)
+
+        val matchesTab = when (selectedTabIndex) {
+            1 -> donation.isApproved
+            2 -> donation.isPending
+            else -> true
+        }
+
+        matchesSearch && matchesTab
     }
 
-    val totalApprovedAmount = uiState.donations.filter { it.isApproved }.sumOf { it.amount }
+    val isFiltered = searchQuery.isNotBlank() || selectedTabIndex != 0
+    val displayTotal = if (!isFiltered && uiState.village.totalFundCollected > 0) {
+        uiState.village.totalFundCollected
+    } else {
+        filteredDonations.filter { it.isApproved }.sumOf { it.amount }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            AlIslahTopBar(title = "গ্রাম অনুদান তহবিল")
+            AlIslahTopBar(
+                title = "গ্রাম অনুদান তহবিল",
+                actions = {
+                    IconButton(onClick = onNavigateToMyDonations) {
+                        Icon(
+                            imageVector = Icons.Default.Favorite,
+                            contentDescription = "আমার অনুদানসমূহ",
+                            tint = AlIslahPrimary
+                        )
+                    }
+                    IconButton(onClick = onNavigateToAllExpenses) {
+                        Icon(
+                            imageVector = Icons.Default.ReceiptLong,
+                            contentDescription = "সকল ব্যয় ও খরচের তালিকা",
+                            tint = AlIslahTheme.customColors.textPrimary
+                        )
+                    }
+                }
+            )
 
             // Top CTA Card
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .padding(horizontal = 20.dp, vertical = 6.dp)
                     .clip(CardShape)
                     .background(PrimaryGradient)
                     .padding(20.dp)
@@ -99,13 +142,13 @@ fun DonationScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "মোট সংগৃহীত অনুদান",
+                            text = if (isFiltered) "ফিল্টারকৃত সংগৃহীত অনুদান" else "মোট সংগৃহীত অনুদান",
                             style = MaterialTheme.typography.titleSmall,
                             color = Color.White.copy(alpha = 0.85f)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = Formatters.formatBDT(totalApprovedAmount),
+                            text = Formatters.formatBDT(displayTotal),
                             style = MaterialTheme.typography.headlineMedium.copy(
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 24.sp
@@ -122,6 +165,23 @@ fun DonationScreen(
                         icon = Icons.Default.Add
                     )
                 }
+            }
+
+            // Search Bar
+            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
+                AlIslahTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = "দাতার নাম, ট্রানজেকশন আইডি দিয়ে খুঁজুন...",
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            tint = AlIslahTheme.customColors.textSecondary
+                        )
+                    }
+                )
             }
 
             // Tab Row
@@ -146,7 +206,9 @@ fun DonationScreen(
                                 text = title,
                                 style = MaterialTheme.typography.labelLarge.copy(
                                     fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
-                                )
+                                ),
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     )
@@ -165,7 +227,7 @@ fun DonationScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 90.dp),
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 80.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(filteredDonations) { donation ->
@@ -180,7 +242,7 @@ fun DonationScreen(
             onClick = onNavigateToCheckout,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 80.dp),
+                .padding(end = 20.dp, bottom = 20.dp),
             containerColor = AlIslahPrimary,
             contentColor = Color.White,
             shape = CircleShape
@@ -199,10 +261,13 @@ private fun DonationFeedCard(donation: Donation) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Box(
                         modifier = Modifier
-                            .size(42.dp)
+                            .size(44.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(AlIslahPrimary.copy(alpha = 0.12f)),
                         contentAlignment = Alignment.Center
@@ -215,19 +280,25 @@ private fun DonationFeedCard(donation: Donation) {
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
                         Text(
                             text = donation.donorName,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = AlIslahTheme.customColors.textPrimary
+                            color = AlIslahTheme.customColors.textPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = Formatters.formatDateTime(donation.createdAt),
                             style = MaterialTheme.typography.bodySmall,
-                            color = AlIslahTheme.customColors.textTertiary
+                            color = AlIslahTheme.customColors.textTertiary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.width(10.dp))
 
                 StatusChip(status = donation.status)
             }

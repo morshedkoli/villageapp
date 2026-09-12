@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.profile
+package app.village.alislah.feature.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,8 +23,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.AlertDialog
@@ -61,7 +63,9 @@ import coil.compose.AsyncImage
 fun ProfileScreen(
     onNavigateToEditProfile: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToMyDonations: () -> Unit,
     onNavigateToAllDonations: () -> Unit,
+    onNavigateToAllExpenses: () -> Unit,
     onNavigateToProblems: () -> Unit,
     onSignOut: () -> Unit,
     authRepository: AuthRepository = ServiceLocator.authRepository
@@ -118,7 +122,6 @@ fun ProfileScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         AlIslahTopBar(title = "আমার প্রোফাইল")
 
@@ -200,9 +203,19 @@ fun ProfileScreen(
                         onClick = onNavigateToEditProfile
                     )
                     ProfileMenuItem(
+                        icon = Icons.Default.Favorite,
+                        title = "আমার অনুদানসমূহ",
+                        onClick = onNavigateToMyDonations
+                    )
+                    ProfileMenuItem(
                         icon = Icons.Default.VolunteerActivism,
                         title = "সকল অনুদানের তালিকা",
                         onClick = onNavigateToAllDonations
+                    )
+                    ProfileMenuItem(
+                        icon = Icons.Default.ReceiptLong,
+                        title = "সকল ব্যয় ও খরচের তালিকা",
+                        onClick = onNavigateToAllExpenses
                     )
                     ProfileMenuItem(
                         icon = Icons.Default.Campaign,

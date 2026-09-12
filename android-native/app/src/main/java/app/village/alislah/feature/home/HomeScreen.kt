@@ -1,6 +1,7 @@
-﻿package app.village.alislah.feature.home
+package app.village.alislah.feature.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowForward
@@ -34,6 +36,8 @@ import androidx.compose.material.icons.filled.Diversity3
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,6 +50,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,9 +65,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.village.alislah.components.AlIslahCard
+import app.village.alislah.components.EmptyInlineState
 import app.village.alislah.components.KpiCard
 import app.village.alislah.components.ShimmerCard
 import app.village.alislah.components.StatusChip
+import app.village.alislah.components.UnreadBadge
 import app.village.alislah.core.Formatters
 import app.village.alislah.model.Donation
 import app.village.alislah.model.FundTransaction
@@ -76,6 +85,7 @@ fun HomeScreen(
     onNavigateToDonationCheckout: () -> Unit,
     onNavigateToAllDonations: () -> Unit,
     onNavigateToAllExpenses: () -> Unit,
+    onNavigateToMyDonations: () -> Unit,
     onNavigateToProblems: () -> Unit,
     onNavigateToReportProblem: () -> Unit,
     onNavigateToProjects: () -> Unit,
@@ -111,7 +121,17 @@ fun HomeScreen(
                 totalCollected = uiState.village.totalFundCollected,
                 totalSpent = uiState.village.totalSpent,
                 onDonateClick = onNavigateToDonationCheckout,
+                onViewDonationsClick = onNavigateToAllDonations,
                 onViewExpensesClick = onNavigateToAllExpenses
+            )
+        }
+
+        // User's Personal Donation Privacy Card (Masked by default)
+        item {
+            MyDonationPrivacyCard(
+                myTotalAmount = uiState.myTotalDonations,
+                donationsCount = uiState.myDonationsCount,
+                onClick = onNavigateToMyDonations
             )
         }
 
@@ -133,7 +153,7 @@ fun HomeScreen(
                 totalCitizens = uiState.village.totalCitizens,
                 activeProjects = uiState.activeProjects.size,
                 pendingProblems = uiState.pendingProblems.size,
-                emergencyFund = uiState.village.emergencyFund,
+                availableFund = uiState.village.availableBalance,
                 onCitizensClick = onNavigateToCitizens,
                 onProjectsClick = onNavigateToProjects,
                 onProblemsClick = onNavigateToProblems,
@@ -208,7 +228,7 @@ private fun HeaderSection(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -230,42 +250,31 @@ private fun HeaderSection(
             )
         }
 
-        IconButton(onClick = onNotificationClick) {
-            Box(contentAlignment = Alignment.TopEnd) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(AlIslahTheme.customColors.cardBackground),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = "Notifications",
-                        tint = AlIslahTheme.customColors.textPrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                if (unreadCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .offset(x = 2.dp, y = (-2).dp)
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(AlIslahError),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (unreadCount > 9) "9+" else unreadCount.toString(),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = Color.White
-                        )
-                    }
-                }
+        Box(
+            modifier = Modifier
+                .padding(end = 4.dp, top = 2.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(AlIslahTheme.customColors.cardBackground)
+                    .clickable { onNotificationClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = "Notifications",
+                    tint = AlIslahTheme.customColors.textPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
             }
+            UnreadBadge(
+                count = unreadCount,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 6.dp, y = (-2).dp)
+            )
         }
     }
 }
@@ -276,6 +285,7 @@ private fun HeroFundCard(
     totalCollected: Double,
     totalSpent: Double,
     onDonateClick: () -> Unit,
+    onViewDonationsClick: () -> Unit,
     onViewExpensesClick: () -> Unit
 ) {
     Card(
@@ -340,6 +350,7 @@ private fun HeroFundCard(
                             .weight(1f)
                             .clip(RoundedCornerShape(14.dp))
                             .background(Color.White.copy(alpha = 0.15f))
+                            .clickable { onViewDonationsClick() }
                             .padding(12.dp)
                     ) {
                         Column {
@@ -372,6 +383,7 @@ private fun HeroFundCard(
                             .weight(1f)
                             .clip(RoundedCornerShape(14.dp))
                             .background(Color.White.copy(alpha = 0.15f))
+                            .clickable { onViewExpensesClick() }
                             .padding(12.dp)
                     ) {
                         Column {
@@ -428,6 +440,126 @@ private fun HeroFundCard(
                             )
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MyDonationPrivacyCard(
+    myTotalAmount: Double,
+    donationsCount: Int,
+    onClick: () -> Unit
+) {
+    var isRevealed by rememberSaveable { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp)
+            .clip(CardShape)
+            .background(AlIslahTheme.customColors.cardBackground)
+            .border(
+                width = 1.dp,
+                color = AlIslahPrimary.copy(alpha = 0.2f),
+                shape = CardShape
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(AlIslahPrimary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.VolunteerActivism,
+                        contentDescription = null,
+                        tint = AlIslahPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "আমার মোট অনুদান",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = AlIslahTheme.customColors.textPrimary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        IconButton(
+                            onClick = { isRevealed = !isRevealed },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isRevealed) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = if (isRevealed) "অনুদান পরিমাণ লুকান" else "অনুদান পরিমাণ দেখুন",
+                                tint = AlIslahTheme.customColors.textSecondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = if (isRevealed) Formatters.formatBDT(myTotalAmount) else "৳ • • • • •",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            color = AlIslahPrimary
+                        ),
+                        modifier = Modifier.clickable { isRevealed = !isRevealed }
+                    )
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = if (isRevealed) {
+                            "${Formatters.formatNumber(donationsCount)} টি অনুদান প্রদান করেছেন • বিবরণ দেখুন"
+                        } else {
+                            "পরিমাণ দেখতে ট্যাপ করুন • বিবরণ দেখুন"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AlIslahTheme.customColors.textTertiary
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(AlIslahPrimary.copy(alpha = 0.08f))
+                    .clickable { onClick() }
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "বিবরণ",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = AlIslahPrimary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                        contentDescription = null,
+                        tint = AlIslahPrimary,
+                        modifier = Modifier.size(10.dp)
+                    )
                 }
             }
         }
@@ -524,7 +656,7 @@ private fun KpiMetricsGrid(
     totalCitizens: Int,
     activeProjects: Int,
     pendingProblems: Int,
-    emergencyFund: Double,
+    availableFund: Double,
     onCitizensClick: () -> Unit,
     onProjectsClick: () -> Unit,
     onProblemsClick: () -> Unit,
@@ -578,13 +710,13 @@ private fun KpiMetricsGrid(
                 onClick = onProblemsClick
             )
             KpiCard(
-                title = "জরুরি তহবিল",
-                value = Formatters.formatBDT(emergencyFund),
+                title = "উপলব্ধ তহবিল",
+                value = Formatters.formatBDT(availableFund),
                 icon = Icons.Default.AccountBalance,
                 iconColor = Color(0xFF8B5CF6),
                 iconBgColor = Color(0xFFF3E8FF),
                 modifier = Modifier.weight(1f),
-                subtitle = "দুর্যোগ ফান্ড",
+                subtitle = "আয় − ব্যয়",
                 onClick = onEmergencyClick
             )
         }
@@ -716,9 +848,13 @@ private fun DonationListItem(donation: Donation) {
                 Text(
                     text = "${donation.paymentMethod} • ${Formatters.formatRelativeTime(donation.createdAt)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = AlIslahTheme.customColors.textTertiary
+                    color = AlIslahTheme.customColors.textTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
@@ -728,6 +864,7 @@ private fun DonationListItem(donation: Donation) {
                         color = AlIslahPrimary
                     )
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 StatusChip(status = donation.status)
             }
         }
@@ -830,24 +967,5 @@ private fun SectionHeader(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun EmptyInlineState(message: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
-            .clip(CardShape)
-            .background(AlIslahTheme.customColors.cardBackground)
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = AlIslahTheme.customColors.textTertiary
-        )
     }
 }

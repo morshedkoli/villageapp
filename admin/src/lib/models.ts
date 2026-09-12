@@ -89,6 +89,23 @@ export interface AdminAccount {
   addedBy?: string;
 }
 
+/**
+ * A village committee member, shown on the app's Leaders screen. Until this
+ * collection has rows that screen shows its empty state — the Android client
+ * used to substitute placeholder names, which villagers read as real contacts.
+ */
+export interface Leader {
+  id: string;
+  name: string;
+  designation: string;
+  phone: string;
+  email: string;
+  photoUrl: string;
+  description: string;
+  /** Ascending display order on the app's Leaders screen. */
+  priority: number;
+}
+
 export interface ExpenseEntry {
   id: string;
   project: string;

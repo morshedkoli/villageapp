@@ -12,11 +12,72 @@ const BROADCAST_TOPIC = 'village_broadcast';
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * The only `type` values a notification doc may carry. Shared vocabulary with
+ * `notificationTypeSchema` in src/lib/schemas.ts and the Android client — a
+ * value outside this set renders as an unknown category in both.
+ *
+ * The finer-grained kind of event ('donation_approved', 'problem_status', …)
+ * travels in the `event` field instead, where nothing has to understand it.
+ */
+const CATEGORIES = [
+  'donation',
+  'problem',
+  'citizen',
+  'project',
+  'general',
+  'registration',
+];
+
+/**
+ * Notification channels created by the Android client
+ * (PushNotificationManager). An id the device does not have silently drops the
+ * notification on API 26+, so every category must map to a real channel.
+ */
+const CHANNEL_BY_CATEGORY = {
+  donation: 'village_donations',
+  problem: 'village_problems',
+  project: 'village_projects',
+  citizen: 'village_broadcast',
+  registration: 'village_broadcast',
+  general: 'village_broadcast',
+};
+
+/**
+ * Bootstrap admin address. Kept in sync by hand with
+ * DEFAULT_BOOTSTRAP_ADMIN_EMAILS in src/lib/admin-access.ts and
+ * `isBootstrapAdmin()` in firestore.rules — all three deploy separately.
+ */
+const BOOTSTRAP_ADMIN_EMAILS = ['murshedkoli@gmail.com'];
+
+/**
+ * Same three-way check the admin panel's `verifyAdmin` performs: custom claim,
+ * bootstrap address, then the `admins` collection. Checking only the custom
+ * claim locked out every admin who was added through the panel.
+ */
+async function isAdminUser(uid) {
+  const user = await admin.auth().getUser(uid);
+  if (user.customClaims && user.customClaims.admin === true) return true;
+
+  const email = (user.email || '').trim().toLowerCase();
+  if (!email) return false;
+  if (BOOTSTRAP_ADMIN_EMAILS.includes(email)) return true;
+
+  const adminDoc = await admin.firestore().collection('admins').doc(email).get();
+  return adminDoc.exists;
+}
+
+function normalizeCategory(category) {
+  const value = String(category || 'general');
+  return CATEGORIES.includes(value) ? value : 'general';
+}
+
+/**
  * Send an FCM push to the shared broadcast topic (all subscribed devices).
  */
 async function sendBroadcastPush({ title, body, type = 'general', data = {} }) {
+  const category = normalizeCategory(type);
   const payload = {
-    type: String(type),
+    type: category,
     title: String(title),
     body: String(body),
     ...Object.fromEntries(
@@ -28,24 +89,36 @@ async function sendBroadcastPush({ title, body, type = 'general', data = {} }) {
     topic: BROADCAST_TOPIC,
     notification: { title: payload.title, body: payload.body },
     data: payload,
-    android: { priority: 'high' },
+    android: {
+      priority: 'high',
+      notification: { channelId: CHANNEL_BY_CATEGORY[category] },
+    },
     apns: { payload: { aps: { sound: 'default' } } },
   });
 }
 
 /**
- * Write a notification doc to Firestore (picked up by onNotificationCreatedSendPush)
- * AND send push immediately in parallel.
+ * Write a notification doc to Firestore. `onNotificationCreatedSendPush` picks
+ * it up and is the single place a push is sent — nothing here sends one
+ * directly, or every event would reach devices twice.
  */
-async function broadcastNotification({ title, body, type = 'general', data = {} }) {
+async function broadcastNotification({
+  title,
+  body,
+  type = 'general',
+  event = '',
+  data = {},
+}) {
   const trimTitle = String(title).trim();
   const trimBody  = String(body).trim();
   if (!trimTitle && !trimBody) return;
 
   const firestoreData = {
-    type: String(type),
+    type: normalizeCategory(type),
+    event: String(event || type || 'general'),
     title: trimTitle,
     body:  trimBody,
+    source: 'admin',
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
@@ -54,7 +127,6 @@ async function broadcastNotification({ title, body, type = 'general', data = {} 
     if (v !== undefined && v !== null) firestoreData[k] = String(v);
   });
 
-  // Write Firestore doc (triggers onNotificationCreatedSendPush for reliability)
   await admin.firestore().collection('notifications').add(firestoreData);
 }
 
@@ -99,7 +171,8 @@ exports.onDonationSubmittedNotifyAll = functions.firestore
     await broadcastNotification({
       title: '💰 নতুন অনুদান জমা পড়েছে',
       body:  `${donorName} ৳${amountText} অনুদান দিতে চান — অনুমোদনের অপেক্ষায়`,
-      type:  'donation_pending',
+      type:  'donation',
+      event: 'donation_pending',
       data:  { donationId: context.params.donationId },
     });
   });
@@ -121,14 +194,16 @@ exports.onDonationApprovedNotifyAll = functions.firestore
       await broadcastNotification({
         title: '✅ অনুদান অনুমোদিত হয়েছে',
         body:  `${donorName}-এর ৳${amountText} অনুদান অনুমোদন করা হয়েছে`,
-        type:  'donation_approved',
+        type:  'donation',
+        event: 'donation_approved',
         data:  { donationId: context.params.donationId },
       });
     } else if (after.status === 'Rejected') {
       await broadcastNotification({
         title: '❌ অনুদান বাতিল হয়েছে',
         body:  `${donorName}-এর ৳${amountText} অনুদান বাতিল করা হয়েছে`,
-        type:  'donation_rejected',
+        type:  'donation',
+        event: 'donation_rejected',
         data:  { donationId: context.params.donationId },
       });
     }
@@ -151,7 +226,8 @@ exports.onProblemSubmittedNotifyAll = functions.firestore
     await broadcastNotification({
       title: '🚨 নতুন সমস্যা রিপোর্ট',
       body:  `${reporter} "${titleText}"${locationPart} সমস্যা রিপোর্ট করেছেন`,
-      type:  'problem_submitted',
+      type:  'problem',
+      event: 'problem_submitted',
       data:  { problemId: context.params.problemId },
     });
   });
@@ -168,11 +244,14 @@ exports.onProblemStatusChangedNotifyAll = functions.firestore
     const titleText = (after.title || 'সমস্যা').toString();
     const status    = (after.status || '').toString();
 
+    // The only statuses a problem can hold — see `problemStatusSchema` in
+    // src/lib/schemas.ts and firestore.rules. 'Resolved'/'In Progress' used to
+    // be listed here and never fired; 'Completed', which does happen, was
+    // missing, so finishing a problem announced nothing.
     const statusMap = {
-      'In Progress':  { emoji: '🔧', label: 'কাজ চলছে' },
-      'Resolved':     { emoji: '✅', label: 'সমাধান হয়েছে' },
-      'Rejected':     { emoji: '❌', label: 'বাতিল করা হয়েছে' },
-      'Approved':     { emoji: '📋', label: 'অনুমোদিত হয়েছে' },
+      'Pending':   { emoji: '🕒', label: 'অপেক্ষমাণ' },
+      'Approved':  { emoji: '📋', label: 'অনুমোদিত হয়েছে' },
+      'Completed': { emoji: '✅', label: 'সমাধান হয়েছে' },
     };
 
     const info = statusMap[status];
@@ -181,7 +260,8 @@ exports.onProblemStatusChangedNotifyAll = functions.firestore
     await broadcastNotification({
       title: `${info.emoji} সমস্যার আপডেট`,
       body:  `"${titleText}" — ${info.label}`,
-      type:  'problem_status',
+      type:  'problem',
+      event: 'problem_status',
       data:  { problemId: context.params.problemId, status },
     });
   });
@@ -202,7 +282,8 @@ exports.onProjectCreatedNotifyAll = functions.firestore
     await broadcastNotification({
       title: '🏗️ নতুন উন্নয়ন প্রকল্প',
       body:  `"${titleText}"${costText} প্রকল্প যোগ করা হয়েছে`,
-      type:  'project_created',
+      type:  'project',
+      event: 'project_created',
       data:  { projectId: context.params.projectId },
     });
   });
@@ -219,12 +300,12 @@ exports.onProjectStatusChangedNotifyAll = functions.firestore
     const titleText = (after.title  || 'প্রকল্প').toString();
     const status    = (after.status || '').toString();
 
+    // Matches `createProjectSchema.status` in src/lib/schemas.ts. 'On Hold'
+    // and 'Cancelled' are not statuses this system can produce.
     const statusMap = {
       'Planning':     { emoji: '📝', label: 'পরিকল্পনা পর্যায়ে' },
       'In Progress':  { emoji: '🔨', label: 'নির্মাণ কাজ চলছে' },
       'Completed':    { emoji: '🎉', label: 'সম্পন্ন হয়েছে' },
-      'On Hold':      { emoji: '⏸️', label: 'স্থগিত রাখা হয়েছে' },
-      'Cancelled':    { emoji: '🚫', label: 'বাতিল করা হয়েছে' },
     };
 
     const info = statusMap[status];
@@ -233,7 +314,8 @@ exports.onProjectStatusChangedNotifyAll = functions.firestore
     await broadcastNotification({
       title: `${info.emoji} প্রকল্পের আপডেট`,
       body:  `"${titleText}" — ${info.label}`,
-      type:  'project_status',
+      type:  'project',
+      event: 'project_status',
       data:  { projectId: context.params.projectId, status },
     });
   });
@@ -259,7 +341,8 @@ exports.onProjectUpdatedNotifyAll = functions.firestore
     await broadcastNotification({
       title: '📢 প্রকল্পের নতুন আপডেট',
       body:  `"${titleText}": ${noteSnippet}`,
-      type:  'project_update',
+      type:  'project',
+      event: 'project_update',
       data:  { projectId: context.params.projectId },
     });
   });
@@ -371,7 +454,8 @@ exports.onFundTransactionCreatedNotifyAll = functions.firestore
     await broadcastNotification({
       title: '💸 তহবিল ব্যয়',
       body:  `৳${amountText} ব্যয় রেকর্ড করা হয়েছে${refPart}`,
-      type:  'fund_transaction',
+      type:  'general',
+      event: 'fund_transaction',
       data:  { txId: context.params.txId },
     });
   });
@@ -389,8 +473,7 @@ exports.sendPushNotification = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('unauthenticated', 'লগইন করুন।');
   }
 
-  const user = await admin.auth().getUser(context.auth.uid);
-  if (!user.customClaims || !user.customClaims.admin) {
+  if (!(await isAdminUser(context.auth.uid))) {
     throw new functions.https.HttpsError('permission-denied', 'শুধুমাত্র অ্যাডমিনরা নোটিফিকেশন পাঠাতে পারবেন।');
   }
 

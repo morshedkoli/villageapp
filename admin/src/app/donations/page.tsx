@@ -42,7 +42,7 @@ export default function DonationsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [form, setForm] = useState<CreateDonationValues>(emptyDonationForm);
 
-  const actions = useDonationActions(donations);
+  const actions = useDonationActions();
 
   const receivingOptions = useMemo<SelectOption[]>(
     () => [

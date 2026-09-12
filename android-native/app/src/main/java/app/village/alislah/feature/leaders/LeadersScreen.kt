@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.leaders
+package app.village.alislah.feature.leaders
 
 import android.content.Intent
 import android.net.Uri
@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.village.alislah.components.AlIslahCard
 import app.village.alislah.components.AlIslahTopBar
+import app.village.alislah.components.EmptyState
 import app.village.alislah.di.ServiceLocator
 import app.village.alislah.model.Leader
 import app.village.alislah.theme.AlIslahPrimary
@@ -68,7 +69,6 @@ fun LeadersScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         AlIslahTopBar(
             title = "গ্রাম উন্নয়ন কমিটি ও নেতৃবৃন্দ",
@@ -118,6 +118,16 @@ fun LeadersScreen(
                             )
                         }
                     }
+                }
+            }
+
+            if (leaders.isEmpty()) {
+                item {
+                    EmptyState(
+                        title = "কমিটির তালিকা এখনো যোগ করা হয়নি",
+                        description = "অ্যাডমিন প্যানেল থেকে কমিটির সদস্য যোগ করা হলে এখানে দেখা যাবে।",
+                        icon = Icons.Default.Diversity3
+                    )
                 }
             }
 

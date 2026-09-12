@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.donation
+package app.village.alislah.feature.donation
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,10 +45,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,13 +80,19 @@ fun DonationCheckoutScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val profile = uiState.userProfile
 
     var selectedAccountIndex by remember { mutableStateOf(0) }
-    var amount by remember { mutableStateOf("500") }
-    var donorName by remember { mutableStateOf("") }
-    var senderNumber by remember { mutableStateOf("") }
-    var transactionId by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
+    var amount by rememberSaveable { mutableStateOf("500") }
+    var senderNumber by rememberSaveable { mutableStateOf("") }
+    var transactionId by rememberSaveable { mutableStateOf("") }
+    var notes by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(profile?.phone) {
+        if (senderNumber.isBlank() && !profile?.phone.isNullOrBlank()) {
+            senderNumber = profile?.phone.orEmpty()
+        }
+    }
 
     val presetAmounts = listOf("100", "500", "1000", "2000", "5000", "10000")
 
@@ -129,7 +138,7 @@ fun DonationCheckoutScreen(
             },
             text = {
                 Text(
-                    text = "আপনার অনুদানটি যাচাইয়ের জন্য জমা হয়েছে। অ্যাডমিন কর্তৃক যাচাই সম্পন্ন হওয়ার সাথে সাথে ফান্ডে যুক্ত হবে। জাযাকাল্লাহু খাইরান!",
+                    text = "আপনার অনুদানটি আপনার প্রোফাইলে সফলভাবে যুক্ত হয়েছে। অ্যাডমিন কর্তৃক যাচাই সম্পন্ন হওয়ার সাথে সাথে ফান্ডে যুক্ত হবে। জাযাকাল্লাহু খাইরান!",
                     style = MaterialTheme.typography.bodyMedium,
                     color = AlIslahTheme.customColors.textSecondary
                 )
@@ -151,7 +160,6 @@ fun DonationCheckoutScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding()
     ) {
@@ -167,6 +175,58 @@ fun DonationCheckoutScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
+            // Auto Profile Badge
+            AlIslahCard(
+                modifier = Modifier.fillMaxWidth(),
+                backgroundColor = AlIslahPrimary.copy(alpha = 0.08f),
+                borderColor = AlIslahPrimary.copy(alpha = 0.25f)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(AlIslahPrimary.copy(alpha = 0.16f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.VerifiedUser,
+                            contentDescription = null,
+                            tint = AlIslahPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = profile?.name?.ifBlank { "গ্রামের সদস্য" } ?: "গ্রামের সদস্য",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = AlIslahTheme.customColors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Verified",
+                                tint = AlIslahPrimary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "আপনার প্রোফাইলের সাথে অনুদানটি স্বয়ংক্রিয়ভাবে যুক্ত হবে",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = AlIslahTheme.customColors.textSecondary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             // Step 1: Select Official Payment Account
             Text(
                 text = "১. অফিসিয়াল পেমেন্ট নম্বর নির্বাচন করুন",
@@ -299,31 +359,14 @@ fun DonationCheckoutScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Step 3: Donor Details & TxID
+            // Step 3: Sender Details (Phone & Optional TrxID)
             Text(
-                text = "৩. আপনার তথ্য ও ট্রানজেকশন আইডি",
+                text = "৩. প্রেরকের তথ্য",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = AlIslahTheme.customColors.textPrimary
             )
 
             Spacer(modifier = Modifier.height(12.dp))
-
-            AlIslahTextField(
-                value = donorName,
-                onValueChange = { donorName = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = "দাতার নাম *",
-                placeholder = "আপনার নাম (বা 'নাম প্রকাশে অনিচ্ছুক')",
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = AlIslahTheme.customColors.textSecondary
-                    )
-                }
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
 
             AlIslahTextField(
                 value = senderNumber,
@@ -347,8 +390,8 @@ fun DonationCheckoutScreen(
                 value = transactionId,
                 onValueChange = { transactionId = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = "ট্রানজেকশন আইডি (TxID / TrxID) *",
-                placeholder = "যেমন: 9J3K8L2M9P",
+                label = "ট্রানজেকশন আইডি (TxID / TrxID) (ঐচ্ছিক)",
+                placeholder = "যেমন: 9J3K8L2M9P (জানা থাকলে লিখুন)",
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Receipt,
@@ -364,8 +407,8 @@ fun DonationCheckoutScreen(
                 value = notes,
                 onValueChange = { notes = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = "মন্তব্য / উৎসর্গ (ঐচ্ছিক)",
-                placeholder = "যেমন: মসজিদের উন্নয়ন বাবদ",
+                label = "মন্তব্য / উদ্দেশ্য (ঐচ্ছিক)",
+                placeholder = "যেমন: মসজিদ উন্নয়ন বা এতিম সহায়তা",
                 singleLine = false,
                 maxLines = 3
             )
@@ -391,13 +434,12 @@ fun DonationCheckoutScreen(
                 text = "অনুদান সম্পন্ন করুন (${Formatters.formatBDT(amount.toDoubleOrNull() ?: 0.0)})",
                 onClick = {
                     viewModel.submitDonation(
-                        donorName = donorName,
                         amountText = amount,
                         paymentMethod = selectedAccount.displayType,
                         receivedAccountId = selectedAccount.id,
                         receivedAccountLabel = "${selectedAccount.displayType} - ${selectedAccount.number}",
-                        transactionId = transactionId,
                         senderNumber = senderNumber,
+                        transactionId = transactionId,
                         notes = notes
                     )
                 },

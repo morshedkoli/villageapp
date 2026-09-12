@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.problems
+package app.village.alislah.feature.problems
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -60,7 +60,6 @@ fun ProblemDetailsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         AlIslahTopBar(
             title = "সমস্যার বিস্তারিত বিবরণ",

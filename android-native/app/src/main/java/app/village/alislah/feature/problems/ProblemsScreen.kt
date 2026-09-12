@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.problems
+package app.village.alislah.feature.problems
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -58,6 +58,8 @@ import app.village.alislah.theme.AlIslahPrimary
 import app.village.alislah.theme.AlIslahTheme
 import coil.compose.AsyncImage
 
+import androidx.compose.material3.ScrollableTabRow
+
 @Composable
 fun ProblemsScreen(
     onNavigateToReportProblem: () -> Unit,
@@ -80,14 +82,14 @@ fun ProblemsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             AlIslahTopBar(title = "গ্রামের সমস্যা ও অভিযোগ")
 
             // Tab Row
-            TabRow(
+            ScrollableTabRow(
                 selectedTabIndex = selectedTabIndex,
+                edgePadding = 20.dp,
                 containerColor = MaterialTheme.colorScheme.background,
                 contentColor = AlIslahPrimary,
                 indicator = { tabPositions ->
@@ -96,7 +98,7 @@ fun ProblemsScreen(
                         color = AlIslahPrimary
                     )
                 },
-                modifier = Modifier.padding(horizontal = 20.dp)
+                divider = {}
             ) {
                 tabTitles.forEachIndexed { index, title ->
                     Tab(
@@ -107,7 +109,9 @@ fun ProblemsScreen(
                                 text = title,
                                 style = MaterialTheme.typography.labelLarge.copy(
                                     fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
-                                )
+                                ),
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     )
@@ -126,7 +130,7 @@ fun ProblemsScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 90.dp),
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 80.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(filteredProblems) { problem ->
@@ -145,7 +149,7 @@ fun ProblemsScreen(
             onClick = onNavigateToReportProblem,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 80.dp),
+                .padding(end = 20.dp, bottom = 20.dp),
             containerColor = AlIslahPrimary,
             contentColor = Color.White,
             shape = CircleShape
@@ -189,15 +193,17 @@ private fun ProblemCard(
                 overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = problem.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = AlIslahTheme.customColors.textSecondary,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
+            val cleanDesc = problem.description.trim().trim(',', '।', '|', '-', ' ', ':', ';')
+            if (cleanDesc.isNotBlank() && cleanDesc.any { it.isLetterOrDigit() }) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = problem.description.trim(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AlIslahTheme.customColors.textSecondary,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
             // Optional Image Preview
             if (problem.photoUrl.isNotBlank()) {
@@ -221,7 +227,9 @@ private fun ProblemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (problem.location.isNotBlank()) {
+                val cleanLocation = problem.location.trim().trim(',', '।', '-', ' ', ':', ';', '৲', '⸴', '`', '\'', '"')
+                val hasValidLocation = cleanLocation.length >= 2 && cleanLocation.any { it.isLetterOrDigit() }
+                if (hasValidLocation) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.weight(1f, fill = false)
@@ -234,7 +242,7 @@ private fun ProblemCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = problem.location,
+                            text = cleanLocation,
                             style = MaterialTheme.typography.labelSmall,
                             color = AlIslahTheme.customColors.textSecondary,
                             maxLines = 1,
@@ -243,9 +251,12 @@ private fun ProblemCard(
                     }
                 } else {
                     Text(
-                        text = "রিপোর্টার: ${problem.reportedByName}",
+                        text = "রিপোর্টার: ${problem.reportedByName.ifBlank { "গ্রামবাসী" }}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = AlIslahTheme.customColors.textTertiary
+                        color = AlIslahTheme.customColors.textTertiary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                 }
 

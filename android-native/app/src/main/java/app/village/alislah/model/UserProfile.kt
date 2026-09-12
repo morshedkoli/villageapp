@@ -42,6 +42,11 @@ data class UserProfile(
         }
     }
 
+    /**
+     * Fields this app is allowed to write for a signed-in user. `isAdmin` and
+     * `blocked` are deliberately absent: they are admin-controlled, and
+     * firestore.rules rejects any client update that touches them.
+     */
     fun toMap(): Map<String, Any?> {
         return mapOf(
             "name" to name,
@@ -54,9 +59,25 @@ data class UserProfile(
             "nidNumber" to nidNumber,
             "bloodGroup" to bloodGroup,
             "dateOfBirth" to dateOfBirth,
-            "isCitizen" to isCitizen,
-            "isAdmin" to isAdmin,
-            "blocked" to blocked
+            "isCitizen" to isCitizen
+        )
+    }
+
+    /**
+     * The subset a citizen edits on the profile screen. Writing only these
+     * keys keeps `phone`, `email` and `createdAt` intact — a full [toMap]
+     * merge from a freshly built instance blanked them.
+     */
+    fun toEditableMap(): Map<String, Any?> {
+        return mapOf(
+            "name" to name,
+            "photoUrl" to photoUrl,
+            "profession" to profession,
+            "village" to village,
+            "address" to address,
+            "nidNumber" to nidNumber,
+            "bloodGroup" to bloodGroup,
+            "dateOfBirth" to dateOfBirth
         )
     }
 }

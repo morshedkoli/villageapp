@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { Plus } from "lucide-react";
 import { useProblems } from "@/lib/hooks";
 import { apiClient, errorMessage } from "@/lib/api-client";
-import { updateProblemStatus } from "@/lib/firestore-service";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import type { ProblemReport } from "@/lib/models";
 import { AddProblemModal } from "./AddProblemModal";
@@ -23,6 +22,7 @@ export default function ProblemsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [form, setForm] = useState<ProblemFormValues>(emptyProblemForm);
 
   const closeCreateModal = () => {
@@ -52,8 +52,16 @@ export default function ProblemsPage() {
     }
   };
 
-  const advanceProblem = (problem: ProblemReport, status: ProblemStatus) => {
-    void updateProblemStatus(problem.id, status);
+  const advanceProblem = async (
+    problem: ProblemReport,
+    status: ProblemStatus
+  ) => {
+    setActionError("");
+    try {
+      await apiClient.patch("/api/problems", { id: problem.id, status });
+    } catch (err: unknown) {
+      setActionError(errorMessage(err, "Failed to update problem status"));
+    }
   };
 
   if (loading) return <LoadingSkeleton />;
@@ -79,6 +87,12 @@ export default function ProblemsPage() {
           Add Problem
         </button>
       </div>
+
+      {actionError && (
+        <div className="bg-danger-light border border-danger/20 text-danger rounded-xl px-4 py-3 text-sm">
+          {actionError}
+        </div>
+      )}
 
       <ProblemTable
         problems={problems}

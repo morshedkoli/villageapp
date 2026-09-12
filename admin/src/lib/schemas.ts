@@ -93,12 +93,19 @@ export const adminEmailQuerySchema = z.object({ email });
 
 // --- Problems ---
 
+export const problemStatusSchema = z.enum(["Pending", "Approved", "Completed"]);
+
 export const createProblemSchema = z.object({
   title: trimmed.min(1, "Problem title is required"),
   description: trimmed.min(1, "Problem description is required"),
   location: trimmed.default(""),
   photoUrl: trimmed.default(""),
-  status: z.enum(["Pending", "Approved", "Completed"]).default("Pending"),
+  status: problemStatusSchema.default("Pending"),
+});
+
+export const updateProblemStatusSchema = z.object({
+  id: requiredId,
+  status: problemStatusSchema,
 });
 
 // --- Projects ---
@@ -116,6 +123,21 @@ const projectFields = {
 
 export const createProjectSchema = z.object(projectFields);
 export const updateProjectSchema = z.object({ ...projectFields, id: requiredId });
+
+// --- Leaders (village committee) ---
+
+const leaderFields = {
+  name: trimmed.min(1, "Name is required"),
+  designation: trimmed.min(1, "Designation is required"),
+  phone: trimmed.default(""),
+  email: z.union([z.literal(""), email]).default(""),
+  photoUrl: trimmed.default(""),
+  description: trimmed.default(""),
+  priority: nonNegativeAmount.default(0),
+};
+
+export const createLeaderSchema = z.object(leaderFields);
+export const updateLeaderSchema = z.object({ ...leaderFields, id: requiredId });
 
 // --- Notifications ---
 

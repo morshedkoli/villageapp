@@ -1,4 +1,4 @@
-﻿package app.village.alislah.nav
+package app.village.alislah.nav
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
@@ -27,7 +27,7 @@ import app.village.alislah.feature.citizens.CitizenDirectoryScreen
 import app.village.alislah.feature.citizens.CitizenProfileScreen
 import app.village.alislah.feature.donation.DonationCheckoutScreen
 import app.village.alislah.feature.donation.DonationScreen
-import app.village.alislah.feature.home.AllDonationsScreen
+import app.village.alislah.feature.donation.MyDonationsScreen
 import app.village.alislah.feature.home.AllExpensesScreen
 import app.village.alislah.feature.home.HomeScreen
 import app.village.alislah.feature.leaders.LeadersScreen
@@ -42,15 +42,33 @@ import app.village.alislah.feature.projects.ProjectDetailsScreen
 import app.village.alislah.feature.projects.ProjectsScreen
 import app.village.alislah.feature.reports.ReportsScreen
 import app.village.alislah.feature.settings.SettingsScreen
+import androidx.compose.runtime.LaunchedEffect
 import app.village.alislah.feature.splash.SplashScreen
+
+import androidx.compose.foundation.layout.WindowInsets
 
 @Composable
 fun AlIslahNavHost(
     navController: NavHostController = rememberNavController(),
-    authRepository: AuthRepository = ServiceLocator.authRepository
+    authRepository: AuthRepository = ServiceLocator.authRepository,
+    pendingRoute: String? = null,
+    onRouteConsumed: () -> Unit = {}
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: Destinations.SPLASH
+
+    val isUserLoggedIn = authRepository.currentUser != null
+
+    LaunchedEffect(pendingRoute, currentRoute) {
+        if (!pendingRoute.isNullOrBlank() && currentRoute != Destinations.SPLASH) {
+            if (isUserLoggedIn) {
+                navController.navigate(pendingRoute) {
+                    launchSingleTop = true
+                }
+            }
+            onRouteConsumed()
+        }
+    }
 
     val mainTabs = setOf(
         Destinations.HOME,
@@ -61,10 +79,9 @@ fun AlIslahNavHost(
     )
     val showBottomNav = currentRoute in mainTabs
 
-    val isUserLoggedIn = authRepository.currentUser != null
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             AnimatedVisibility(
                 visible = showBottomNav,
@@ -147,8 +164,15 @@ fun AlIslahNavHost(
             composable(Destinations.HOME) {
                 HomeScreen(
                     onNavigateToDonationCheckout = { navController.navigate(Destinations.DONATION_CHECKOUT) },
-                    onNavigateToAllDonations = { navController.navigate(Destinations.ALL_DONATIONS) },
+                    onNavigateToAllDonations = {
+                        navController.navigate(Destinations.DONATIONS) {
+                            popUpTo(Destinations.HOME) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
                     onNavigateToAllExpenses = { navController.navigate(Destinations.ALL_EXPENSES) },
+                    onNavigateToMyDonations = { navController.navigate(Destinations.MY_DONATIONS) },
                     onNavigateToProblems = { navController.navigate(Destinations.PROBLEMS) },
                     onNavigateToReportProblem = { navController.navigate(Destinations.REPORT_PROBLEM) },
                     onNavigateToProjects = { navController.navigate(Destinations.PROJECTS) },
@@ -165,7 +189,9 @@ fun AlIslahNavHost(
             // Primary Tab 1: Donations
             composable(Destinations.DONATIONS) {
                 DonationScreen(
-                    onNavigateToCheckout = { navController.navigate(Destinations.DONATION_CHECKOUT) }
+                    onNavigateToCheckout = { navController.navigate(Destinations.DONATION_CHECKOUT) },
+                    onNavigateToAllExpenses = { navController.navigate(Destinations.ALL_EXPENSES) },
+                    onNavigateToMyDonations = { navController.navigate(Destinations.MY_DONATIONS) }
                 )
             }
 
@@ -193,7 +219,15 @@ fun AlIslahNavHost(
                 ProfileScreen(
                     onNavigateToEditProfile = { navController.navigate(Destinations.EDIT_PROFILE) },
                     onNavigateToSettings = { navController.navigate(Destinations.SETTINGS) },
-                    onNavigateToAllDonations = { navController.navigate(Destinations.ALL_DONATIONS) },
+                    onNavigateToMyDonations = { navController.navigate(Destinations.MY_DONATIONS) },
+                    onNavigateToAllDonations = {
+                        navController.navigate(Destinations.DONATIONS) {
+                            popUpTo(Destinations.HOME) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onNavigateToAllExpenses = { navController.navigate(Destinations.ALL_EXPENSES) },
                     onNavigateToProblems = { navController.navigate(Destinations.PROBLEMS) },
                     onSignOut = {
                         navController.navigate(Destinations.LOGIN) {
@@ -204,12 +238,15 @@ fun AlIslahNavHost(
             }
 
             // Secondary Screens
-            composable(Destinations.ALL_DONATIONS) {
-                AllDonationsScreen(onBackClick = { navController.popBackStack() })
-            }
-
             composable(Destinations.ALL_EXPENSES) {
                 AllExpensesScreen(onBackClick = { navController.popBackStack() })
+            }
+
+            composable(Destinations.MY_DONATIONS) {
+                MyDonationsScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onNavigateToCheckout = { navController.navigate(Destinations.DONATION_CHECKOUT) }
+                )
             }
 
             composable(Destinations.DONATION_CHECKOUT) {
@@ -267,7 +304,10 @@ fun AlIslahNavHost(
             }
 
             composable(Destinations.NOTIFICATIONS) {
-                NotificationScreen(onBackClick = { navController.popBackStack() })
+                NotificationScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onNavigateToRoute = { route -> navController.navigate(route) }
+                )
             }
 
             composable(Destinations.REPORTS) {

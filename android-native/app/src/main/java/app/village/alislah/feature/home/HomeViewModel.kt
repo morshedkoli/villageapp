@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.home
+package app.village.alislah.feature.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -27,6 +27,8 @@ data class HomeUiState(
     val userProfile: UserProfile? = null,
     val recentDonations: List<Donation> = emptyList(),
     val allDonations: List<Donation> = emptyList(),
+    val myTotalDonations: Double = 0.0,
+    val myDonationsCount: Int = 0,
     val recentExpenses: List<FundTransaction> = emptyList(),
     val allExpenses: List<FundTransaction> = emptyList(),
     val activeProjects: List<Project> = emptyList(),
@@ -56,6 +58,7 @@ class HomeViewModel(
 
         viewModelScope.launch {
             villageRepository.getVillageFlow().collect { village ->
+                android.util.Log.d("ALISLAH_FINANCE", "VILLAGE DOC: totalFundCollected=${village.totalFundCollected}, totalSpent=${village.totalSpent}, availableBalance=${village.availableBalance}")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     village = village
@@ -64,7 +67,7 @@ class HomeViewModel(
         }
 
         viewModelScope.launch {
-            donationRepository.getDonationsFlow(limit = 50).collect { donations ->
+            donationRepository.getDonationsFlow(limit = 500).collect { donations ->
                 val approved = donations.filter { it.isApproved }
                 _uiState.value = _uiState.value.copy(
                     allDonations = donations,
@@ -74,7 +77,7 @@ class HomeViewModel(
         }
 
         viewModelScope.launch {
-            expenseRepository.getExpensesFlow(limit = 50).collect { expenses ->
+            expenseRepository.getExpensesFlow(limit = 100).collect { expenses ->
                 _uiState.value = _uiState.value.copy(
                     allExpenses = expenses,
                     recentExpenses = expenses.take(5)
@@ -110,6 +113,16 @@ class HomeViewModel(
             viewModelScope.launch {
                 authRepository.getUserProfileFlow(currentUid).collect { profile ->
                     _uiState.value = _uiState.value.copy(userProfile = profile)
+                }
+            }
+
+            viewModelScope.launch {
+                donationRepository.getUserDonationsFlow(currentUid).collect { myDonations ->
+                    val approvedTotal = myDonations.filter { it.isApproved }.sumOf { it.amount }
+                    _uiState.value = _uiState.value.copy(
+                        myTotalDonations = approvedTotal,
+                        myDonationsCount = myDonations.size
+                    )
                 }
             }
         }

@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.notifications
+package app.village.alislah.feature.notifications
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,6 +20,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.Notifications
@@ -49,9 +51,12 @@ import app.village.alislah.theme.AlIslahError
 import app.village.alislah.theme.AlIslahPrimary
 import app.village.alislah.theme.AlIslahTheme
 
+import app.village.alislah.nav.Destinations
+
 @Composable
 fun NotificationScreen(
     onBackClick: () -> Unit,
+    onNavigateToRoute: ((String) -> Unit)? = null,
     viewModel: NotificationViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -60,7 +65,6 @@ fun NotificationScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         AlIslahTopBar(
             title = "বিজ্ঞপ্তি ও নোটিফিকেশন",
@@ -76,13 +80,26 @@ fun NotificationScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 90.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(uiState.notifications) { notification ->
+                    val targetRoute = Destinations.resolveNotificationRoute(
+                        type = notification.type,
+                        targetId = notification.targetId,
+                        customRoute = notification.route,
+                        title = notification.title,
+                        body = notification.body
+                    )
                     NotificationCard(
                         notification = notification,
-                        onClick = { viewModel.markAsRead(notification.id) }
+                        hasActionPage = targetRoute != null && targetRoute != Destinations.NOTIFICATIONS,
+                        onClick = {
+                            viewModel.markAsRead(notification.id)
+                            if (targetRoute != null && targetRoute != Destinations.NOTIFICATIONS) {
+                                onNavigateToRoute?.invoke(targetRoute)
+                            }
+                        }
                     )
                 }
             }
@@ -93,14 +110,22 @@ fun NotificationScreen(
 @Composable
 private fun NotificationCard(
     notification: AppNotification,
+    hasActionPage: Boolean,
     onClick: () -> Unit
 ) {
-    val (icon, color) = when (notification.type.lowercase()) {
-        "donation" -> Pair(Icons.Default.VolunteerActivism, AlIslahPrimary)
-        "problem" -> Pair(Icons.Default.Campaign, Color(0xFFF59E0B))
-        "project" -> Pair(Icons.Default.Construction, Color(0xFF0EA5E9))
-        "citizen" -> Pair(Icons.Default.People, Color(0xFF8B5CF6))
-        else -> Pair(Icons.Default.Notifications, AlIslahPrimary)
+    val text = "${notification.title} ${notification.body} ${notification.type}".lowercase()
+    val (icon, color, categoryLabel) = when {
+        notification.type.equals("donation", ignoreCase = true) || text.contains("অনুদান") || text.contains("তহবিল") ->
+            Triple(Icons.Default.VolunteerActivism, AlIslahPrimary, "অনুদান")
+        notification.type.equals("expense", ignoreCase = true) || text.contains("ব্যয়") || text.contains("ব্যয়") || text.contains("খরচ") ->
+            Triple(Icons.Default.ArrowUpward, Color(0xFFEF4444), "ব্যয় বিবরণী")
+        notification.type.equals("problem", ignoreCase = true) || text.contains("সমস্যা") || text.contains("অভিযোগ") ->
+            Triple(Icons.Default.Campaign, Color(0xFFF59E0B), "সমস্যা")
+        notification.type.equals("project", ignoreCase = true) || text.contains("প্রকল্প") || text.contains("উন্নয়ন") || text.contains("উন্নয়ন") ->
+            Triple(Icons.Default.Construction, Color(0xFF0EA5E9), "প্রকল্প")
+        notification.type.equals("citizen", ignoreCase = true) || text.contains("নাগরিক") || text.contains("সদস্য") ->
+            Triple(Icons.Default.People, Color(0xFF8B5CF6), "নাগরিক")
+        else -> Triple(Icons.Default.Notifications, AlIslahPrimary, "সাধারণ ঘোষণা")
     }
 
     AlIslahCard(
@@ -114,8 +139,8 @@ private fun NotificationCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(color.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -135,40 +160,82 @@ private fun NotificationCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = notification.title,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = if (!notification.isRead) FontWeight.Bold else FontWeight.Medium
-                        ),
-                        color = AlIslahTheme.customColors.textPrimary
-                    )
-
-                    if (!notification.isRead) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(AlIslahPrimary)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(color.copy(alpha = 0.1f))
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = categoryLabel,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp
+                            ),
+                            color = color
                         )
                     }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = Formatters.formatRelativeTime(notification.createdAt),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = AlIslahTheme.customColors.textTertiary
+                        )
+                        if (!notification.isRead) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(AlIslahPrimary)
+                            )
+                        }
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = notification.body,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = AlIslahTheme.customColors.textSecondary,
-                    lineHeight = 20.sp
-                )
 
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = Formatters.formatRelativeTime(notification.createdAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = AlIslahTheme.customColors.textTertiary
+                    text = notification.title,
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = if (!notification.isRead) FontWeight.Bold else FontWeight.SemiBold
+                    ),
+                    color = AlIslahTheme.customColors.textPrimary
                 )
+
+                if (notification.body.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = notification.body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AlIslahTheme.customColors.textSecondary,
+                        lineHeight = 20.sp
+                    )
+                }
+
+                if (hasActionPage) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "বিস্তারিত পেজে যান",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp
+                            ),
+                            color = color
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.ArrowForward,
+                            contentDescription = null,
+                            tint = color,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
             }
         }
     }

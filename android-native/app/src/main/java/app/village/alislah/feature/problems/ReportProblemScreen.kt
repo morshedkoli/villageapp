@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.problems
+package app.village.alislah.feature.problems
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -104,7 +104,6 @@ fun ReportProblemScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding()
     ) {

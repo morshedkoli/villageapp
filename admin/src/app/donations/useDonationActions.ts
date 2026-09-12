@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from "react";
 import { apiClient, errorMessage } from "@/lib/api-client";
-import { sendPushNotification } from "@/lib/push";
 import type { Donation } from "@/lib/models";
 
 export interface CreateDonationValues {
@@ -23,20 +22,12 @@ export const emptyDonationForm: CreateDonationValues = {
   status: "Approved",
 };
 
-function donationAnnouncement(donorName: string, amount: number) {
-  return {
-    title: "নতুন অনুদান",
-    body: `${donorName} ৳${amount} অনুদান দিয়েছেন`,
-    type: "donation",
-  };
-}
-
 /**
  * Every write the donations page performs. Kept out of the page component so
  * the JSX stays presentational and the approve/reject/bulk flows share one
  * error and in-flight state.
  */
-export function useDonationActions(donations: Donation[]) {
+export function useDonationActions() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
@@ -47,14 +38,10 @@ export function useDonationActions(donations: Donation[]) {
       setActionLoading(id);
       setActionError("");
       try {
+        // The status change fires `onDonationApprovedNotifyAll`, which writes
+        // the feed entry and the push. Sending one from here too announced
+        // every approval twice.
         await apiClient.patch("/api/donations", { id, action: "approve" });
-
-        const donation = donations.find((d) => d.id === id);
-        if (donation) {
-          await sendPushNotification(
-            donationAnnouncement(donation.donorName, donation.amount)
-          );
-        }
       } catch (err) {
         setActionError(errorMessage(err, "Failed to approve donation"));
         console.error("Failed to approve donation:", err);
@@ -62,7 +49,7 @@ export function useDonationActions(donations: Donation[]) {
         setActionLoading(null);
       }
     },
-    [donations]
+    []
   );
 
   const reject = useCallback(async (id: string) => {
@@ -86,30 +73,20 @@ export function useDonationActions(donations: Donation[]) {
     if (toApprove.length === 0) return;
 
     setActionError("");
-    let successCount = 0;
-    let totalApproved = 0;
     let failureCount = 0;
 
     for (const donation of toApprove) {
       try {
+        // Each approval announces itself through
+        // `onDonationApprovedNotifyAll`; no summary push from here.
         await apiClient.patch("/api/donations", {
           id: donation.id,
           action: "approve",
         });
-        successCount++;
-        totalApproved += donation.amount;
       } catch (err) {
         failureCount++;
         console.error(`Failed to approve donation ${donation.id}:`, err);
       }
-    }
-
-    if (successCount > 0) {
-      await sendPushNotification({
-        title: "নতুন অনুদান",
-        body: `${successCount}টি অনুদান অনুমোদিত হয়েছে — মোট ৳${totalApproved}`,
-        type: "donation",
-      });
     }
 
     if (failureCount > 0) {

@@ -1,4 +1,4 @@
-﻿package app.village.alislah.data
+package app.village.alislah.data
 
 import app.village.alislah.model.AppNotification
 import com.google.firebase.firestore.FieldValue
@@ -7,6 +7,8 @@ import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.tasks.await
 
 class NotificationRepository(
@@ -14,7 +16,20 @@ class NotificationRepository(
 ) {
     private val notificationsCollection = firestore.collection("notifications")
 
-    fun getNotificationsFlow(userId: String? = null): Flow<List<AppNotification>> = callbackFlow {
+    /**
+     * Broadcast notifications, each tagged with whether this user has already
+     * read it. Read state lives in `users/{uid}/notification_reads/{id}` —
+     * without folding it back in here every notification stays bold forever
+     * and the home badge counts the whole list.
+     */
+    fun getNotificationsFlow(userId: String? = null): Flow<List<AppNotification>> {
+        val reads = if (userId.isNullOrEmpty()) flowOf(emptySet()) else readIdsFlow(userId)
+        return combine(notificationDocsFlow(), reads) { notifications, readIds ->
+            notifications.map { it.copy(isRead = readIds.contains(it.id)) }
+        }
+    }
+
+    private fun notificationDocsFlow(): Flow<List<AppNotification>> = callbackFlow {
         val query = notificationsCollection
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .limit(100)
@@ -33,6 +48,20 @@ class NotificationRepository(
                 trySend(emptyList())
             }
         }
+        awaitClose { registration.remove() }
+    }
+
+    private fun readIdsFlow(userId: String): Flow<Set<String>> = callbackFlow {
+        val registration = firestore.collection("users")
+            .document(userId)
+            .collection("notification_reads")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) {
+                    trySend(emptySet())
+                    return@addSnapshotListener
+                }
+                trySend(snapshot.documents.map { it.id }.toSet())
+            }
         awaitClose { registration.remove() }
     }
 

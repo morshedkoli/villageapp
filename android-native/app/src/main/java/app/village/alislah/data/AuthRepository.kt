@@ -151,10 +151,15 @@ class AuthRepository(
         user
     }
 
+    /**
+     * Merges only the citizen-editable fields. Anything the screen does not
+     * collect (phone, email, createdAt, admin/moderation flags) is left as the
+     * server has it.
+     */
     suspend fun updateUserProfile(profile: UserProfile): Result<Unit> = runCatching {
         val uid = currentUserId ?: throw Exception("User not logged in")
         firestore.collection("users").document(uid)
-            .set(profile.toMap(), SetOptions.merge())
+            .set(profile.toEditableMap(), SetOptions.merge())
             .await()
     }
 

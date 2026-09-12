@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.projects
+package app.village.alislah.feature.projects
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -77,7 +77,6 @@ fun ProjectsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         AlIslahTopBar(
             title = "উন্নয়ন প্রকল্পসমূহ",

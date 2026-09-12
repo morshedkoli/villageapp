@@ -17,3 +17,5 @@ app/google-services.json
 *.keystore
 *.jks
 !app/debug.keystore
+keystore.properties
+

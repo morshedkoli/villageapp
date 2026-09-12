@@ -1,4 +1,4 @@
-﻿package app.village.alislah.components
+package app.village.alislah.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -99,19 +99,20 @@ fun AlIslahBottomNav(
 
                     Column(
                         modifier = Modifier
+                            .weight(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .clickable(
                                 interactionSource = interactionSource,
                                 indication = null
                             ) { onTabSelected(tab) }
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                            .padding(vertical = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(
-                                    if (isSelected) AlIslahPrimary.copy(alpha = 0.12f)
+                                    if (isSelected) AlIslahPrimary.copy(alpha = 0.14f)
                                     else Color.Transparent
                                 )
                                 .padding(horizontal = 14.dp, vertical = 4.dp),
@@ -133,7 +134,9 @@ fun AlIslahBottomNav(
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 fontSize = 11.sp
                             ),
-                            color = textColor
+                            color = textColor,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }

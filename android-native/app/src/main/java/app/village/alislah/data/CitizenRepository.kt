@@ -1,4 +1,4 @@
-﻿package app.village.alislah.data
+package app.village.alislah.data
 
 import app.village.alislah.model.Citizen
 import app.village.alislah.model.Leader
@@ -38,32 +38,11 @@ class CitizenRepository(
             .limit(50)
 
         val registration = query.addSnapshotListener { snapshot, error ->
-            if (error != null || snapshot == null || snapshot.isEmpty) {
-                // Fallback: create mock committee leaders if collection not yet populated
-                val fallbackLeaders = listOf(
-                    Leader(
-                        id = "l1",
-                        name = "মোঃ আব্দুল কাদের",
-                        designation = "গ্রাম সভাপতি",
-                        phone = "01711000000",
-                        description = "গ্রাম উন্নয়ন কমিটির সম্মানিত সভাপতি"
-                    ),
-                    Leader(
-                        id = "l2",
-                        name = "ড. মোর্শেদ আলী",
-                        designation = "সাধারণ সম্পাদক",
-                        phone = "01811000000",
-                        description = "উন্নয়ন ও অর্থ তদারকি সমন্বয়ক"
-                    ),
-                    Leader(
-                        id = "l3",
-                        name = "তাহমিনা বেগম",
-                        designation = "মহিলা বিষয়ক সম্পাদিকা",
-                        phone = "01911000000",
-                        description = "নারী ও শিশু কল্যাণ বিষয়ক উপদেষ্টা"
-                    )
-                )
-                trySend(fallbackLeaders)
+            // An empty list renders the screen's empty state. Never substitute
+            // placeholder committee members: villagers read them as the real
+            // names and phone numbers of people they can call.
+            if (error != null || snapshot == null) {
+                trySend(emptyList())
                 return@addSnapshotListener
             }
 

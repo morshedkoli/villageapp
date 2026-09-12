@@ -1,4 +1,4 @@
-﻿package app.village.alislah.feature.reports
+package app.village.alislah.feature.reports
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -60,7 +60,6 @@ fun ReportsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
     ) {
         AlIslahTopBar(
             title = "উন্নয়ন ও অডিট রিপোর্ট",
